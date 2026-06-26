@@ -1441,3 +1441,95 @@ body::before {
     padding: 3px 8px;
 }
 
+/* ==========================================================================
+   RESPONSIVE DESIGN & MOBILE LAYOUTS
+   ========================================================================== */
+
+/* Breakpoint for tablets and smaller desktop monitors / splits */
+@media (max-width: 1200px) {
+    body, html {
+        height: auto !important;
+        overflow-y: auto !important;
+    }
+    
+    #boot-screen {
+        height: auto !important;
+        min-height: 100vh;
+        overflow-y: auto !important;
+        padding: 40px 0;
+    }
+    
+    .boot-container {
+        margin: 20px auto;
+    }
+    
+    .selector-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .workspace-grid {
+        display: flex !important;
+        flex-direction: column !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+    
+    .panel {
+        height: 500px !important; /* Fixed readable height when stacked */
+        margin-bottom: 10px;
+    }
+    
+    .hud-header {
+        height: auto !important;
+        flex-direction: column;
+        padding: 10px;
+        gap: 10px;
+    }
+    
+    .hud-left, .hud-right, .hud-center {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .workspace-grid {
+        padding-top: 10px !important;
+    }
+}
+
+/* Breakpoint for mobile phones */
+@media (max-width: 768px) {
+    .selector-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .boot-container {
+        padding: 20px;
+    }
+    
+    .glow-logo {
+        font-size: 2.2rem;
+    }
+    
+    .template-chips {
+        justify-content: center;
+    }
+    
+    .hud-logo {
+        font-size: 1.1rem;
+    }
+    
+    .panel-header {
+        flex-direction: column;
+        height: auto !important;
+        padding: 8px 15px;
+        gap: 5px;
+        align-items: flex-start;
+    }
+    
+    .panel-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+
