@@ -111,8 +111,17 @@ body::before {
    ========================================================================== */
 #boot-screen {
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     position: relative;
+    overflow-y: auto;
+    width: 100%;
+    height: 100%;
+}
+
+.boot-spacer {
+    flex-grow: 1;
+    min-height: 10px;
+    flex-shrink: 0;
 }
 
 .boot-container {
@@ -123,9 +132,10 @@ body::before {
     display: flex;
     flex-direction: column;
     max-width: 960px;
-    padding: 40px;
+    padding: 20px 30px;
     position: relative;
     width: 90%;
+    flex-shrink: 0;
 }
 
 /* Chip pins decoration on boot panel */
@@ -174,10 +184,10 @@ body::before {
     border: 1px solid var(--panel-border);
     color: var(--text-primary);
     font-family: 'Share Tech Mono', monospace;
-    font-size: 0.95rem;
-    height: 140px;
-    margin-bottom: 30px;
-    padding: 15px;
+    font-size: 0.9rem;
+    height: 100px;
+    margin-bottom: 20px;
+    padding: 12px 15px;
 }
 .term-line {
     line-height: 1.5;
@@ -192,9 +202,9 @@ body::before {
 /* Language selection grid */
 .selector-grid {
     display: grid;
-    gap: 20px;
+    gap: 15px;
     grid-template-columns: repeat(3, 1fr);
-    margin-bottom: 30px;
+    margin-bottom: 20px;
 }
 
 .selector-card {
@@ -203,7 +213,7 @@ body::before {
     border-radius: 4px;
     cursor: pointer;
     overflow: hidden;
-    padding: 20px;
+    padding: 15px;
     position: relative;
     transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
 }
@@ -288,8 +298,8 @@ body::before {
 /* Templates selection chips */
 .template-section {
     border-top: 1px dashed var(--panel-border);
-    margin-bottom: 35px;
-    padding-top: 20px;
+    margin-bottom: 20px;
+    padding-top: 15px;
 }
 .section-title {
     align-items: center;
