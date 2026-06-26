@@ -225,6 +225,7 @@ class HDLParser {
         let hasArchitecture = false;
         let hasEndEntity = false;
         let hasEndArchitecture = false;
+        let entityName = "";
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim().toLowerCase();
@@ -233,15 +234,35 @@ class HDLParser {
             if (line.startsWith('--')) continue;
 
             if (line.includes('library ieee;')) hasLibrary = true;
-            if (line.includes('entity ') && line.includes(' is')) hasEntity = true;
-            if (line.includes('end ') && line.includes('entity')) hasEndEntity = true;
+            
+            const entityMatch = /entity\s+(\w+)\s+is/i.exec(line);
+            if (entityMatch) {
+                hasEntity = true;
+                entityName = entityMatch[1].toLowerCase();
+            }
+            
+            if (line.includes('end ') && (line.includes('entity') || (entityName !== "" && line.includes(entityName)))) {
+                hasEndEntity = true;
+            }
+
             if (line.includes('architecture ') && line.includes(' of ')) hasArchitecture = true;
             if (line.includes('end ') && (line.includes('architecture') || line.includes('behavioral') || line.includes('rtl'))) hasEndArchitecture = true;
 
             // VHDL Semicolon Check
             if (line.length > 0 && !line.startsWith('--') && !line.endsWith('begin') && !line.endsWith('is') && !line.endsWith('then') && !line.endsWith('loop')) {
+                // Determine if this is the last element in a port / parameter block before closing parenthesis
+                let isLastParameter = false;
+                for (let j = i + 1; j < lines.length; j++) {
+                    const nextLine = lines[j].trim();
+                    if (nextLine === "" || nextLine.startsWith('--')) continue;
+                    if (nextLine.startsWith(')') || nextLine.startsWith('end') || nextLine.startsWith('port')) {
+                        isLastParameter = true;
+                    }
+                    break;
+                }
+
                 // Must end with semicolon
-                if (!line.endsWith(';') && !line.endsWith('port') && !line.endsWith('(') && !line.endsWith(')') && !line.endsWith('generate') && !line.includes('port (')) {
+                if (!isLastParameter && !line.endsWith(';') && !line.endsWith('port') && !line.endsWith('(') && !line.endsWith(')') && !line.endsWith('generate') && !line.includes('port (')) {
                     this.errors.push({
                         line: lineNum,
                         severity: 'error',
@@ -310,7 +331,7 @@ class HDLParser {
 
         // 2. Parse Input Ports
         // Matches: input a, b, c;  or  input [3:0] q; or input wire r;
-        const inputRegex = /input\s+(?:wire\s+)?(?:\[\s*(\d+)\s*:\s*(\d+)\s*\])?\s*([^;\n\)]+)/g;
+        const inputRegex = /input\s+(?:wire|reg|logic|bit)?\s*(?:\[\s*(\d+)\s*:\s*(\d+)\s*\])?\s*([^;\n\)]+)/g;
         let match;
         while ((match = inputRegex.exec(cleanCode)) !== null) {
             const high = match[1] ? parseInt(match[1]) : 0;
@@ -328,7 +349,7 @@ class HDLParser {
 
         // 3. Parse Output Ports
         // Matches: output a; or output reg [3:0] q; or output wire z;
-        const outputRegex = /output\s+(reg|wire)?\s*(?:\[\s*(\d+)\s*:\s*(\d+)\s*\])?\s*([^;\n\)]+)/g;
+        const outputRegex = /output\s+(?:reg|wire|logic|bit)?\s*(?:\[\s*(\d+)\s*:\s*(\d+)\s*\])?\s*([^;\n\)]+)/g;
         while ((match = outputRegex.exec(cleanCode)) !== null) {
             const isReg = match[1] === 'reg';
             const high = match[2] ? parseInt(match[2]) : 0;
@@ -350,7 +371,7 @@ class HDLParser {
         }
 
         // 4. Parse internal registers and wires
-        const regRegex = /reg\s+(?:\[\s*(\d+)\s*:\s*(\d+)\s*\])?\s*([^;\n]+)/g;
+        const regRegex = /(?:reg|logic|bit)\s+(?:\[\s*(\d+)\s*:\s*(\d+)\s*\])?\s*([^;\n]+)/g;
         while ((match = regRegex.exec(cleanCode)) !== null) {
             const high = match[1] ? parseInt(match[1]) : 0;
             const low = match[2] ? parseInt(match[2]) : 0;
@@ -435,7 +456,7 @@ class HDLParser {
         // - D Flip-Flop: always @(posedge clk) q <= d;
         // - Counter: always @(posedge clk) if (rst) count <= 0; else count <= count + 1;
         // - Shift Register: always @(posedge clk) if (rst) r <= 0; else r <= {r[2:0], sin};
-        const alwaysRegex = /always\s*@\s*\(\s*(posedge|negedge)\s+(\w+)(?:\s+or\s+(posedge|negedge)\s+(\w+))?\s*\)\s*([\s\S]+?)(?=always|endmodule|$)/g;
+        const alwaysRegex = /(?:always|always_ff)\s*@\s*\(\s*(posedge|negedge)\s+(\w+)(?:\s+or\s+(posedge|negedge)\s+(\w+))?\s*\)\s*([\s\S]+?)(?=always|endmodule|$)/g;
         const alwaysMatch = alwaysRegex.exec(cleanCode);
         if (alwaysMatch) {
             const triggerEdge = alwaysMatch[1]; // posedge
