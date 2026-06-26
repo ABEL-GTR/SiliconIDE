@@ -52,8 +52,8 @@ class HDLParser {
 
         this.hasErrors = this.errors.some(e => e.severity === 'error');
 
-        // Compile logic simulation model (only for Verilog currently)
-        if (!this.hasErrors && this.language === 'verilog') {
+        // Compile logic simulation model for Verilog and SystemVerilog
+        if (!this.hasErrors && (this.language === 'verilog' || this.language === 'sysverilog')) {
             try {
                 this.compileVerilog(code);
             } catch (err) {
@@ -152,8 +152,9 @@ class HDLParser {
                 const isControlStructure = /\b(always|begin|end|case|endcase|if|else|initial)\b/.test(line);
                 const hasSemicolon = line.endsWith(';') || line.includes(';') || line.endsWith(')') || line.endsWith('end') || line.endsWith(',');
                 const isCommentOrBrace = line.startsWith('//') || line === 'begin' || line === 'end' || line === 'endmodule' || line.startsWith('`');
+                const isInsideParentheses = braceStack.some(b => b.char === '(');
 
-                if (!isControlStructure && !hasSemicolon && !isCommentOrBrace) {
+                if (!isInsideParentheses && !isControlStructure && !hasSemicolon && !isCommentOrBrace) {
                     // Check if it looks like an assign or declaration
                     if (/\b(assign|input|output|reg|wire|parameter)\b/.test(line) || line.includes('=')) {
                         this.errors.push({
@@ -349,9 +350,9 @@ class HDLParser {
 
         // 3. Parse Output Ports
         // Matches: output a; or output reg [3:0] q; or output wire z;
-        const outputRegex = /output\s+(?:reg|wire|logic|bit)?\s*(?:\[\s*(\d+)\s*:\s*(\d+)\s*\])?\s*([^;\n\)]+)/g;
+        const outputRegex = /output\s+(reg|wire|logic|bit)?\s*(?:\[\s*(\d+)\s*:\s*(\d+)\s*\])?\s*([^;\n\)]+)/g;
         while ((match = outputRegex.exec(cleanCode)) !== null) {
-            const isReg = match[1] === 'reg';
+            const isReg = match[1] === 'reg' || match[1] === 'logic' || match[1] === 'bit';
             const high = match[2] ? parseInt(match[2]) : 0;
             const low = match[3] ? parseInt(match[3]) : 0;
             const names = match[4].split(',').map(n => n.trim()).filter(n => n !== "");

@@ -622,8 +622,8 @@ function runHDLCompilation() {
         populateDiagnosticsList([]); // success screen
         setupProposedPatch(code, code);
 
-        // Feed compilation core to simulation visualizers if Verilog
-        if (currentLanguage === 'verilog') {
+        // Feed compilation core to simulation visualizers if Verilog or SystemVerilog
+        if (currentLanguage === 'verilog' || currentLanguage === 'sysverilog') {
             setupSimulationFromCompilation(report);
         }
     }
