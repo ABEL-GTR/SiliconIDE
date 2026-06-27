@@ -36,8 +36,11 @@
     padding: 0;
     user-select: none;
 }
-button:focus, button:active, a:focus, a:active {
+button:focus, button:active, a:focus, a:active,
+button:focus-visible, a:focus-visible,
+*:focus-visible {
     outline: none !important;
+    box-shadow: none !important;
 }
 
 body, html {
