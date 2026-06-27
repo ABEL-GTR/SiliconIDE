@@ -336,9 +336,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     lucide.createIcons();
 
-    // Trigger HUD clock loop
-    updateHudClock();
-    setInterval(updateHudClock, 100);
+
 
     // Sync Textarea scroll with line numbers
     const codeArea = document.getElementById('code-input');
@@ -1207,12 +1205,21 @@ function initAuth() {
 
     // Listen to Supabase authorization triggers
     supabaseClient.auth.onAuthStateChange((event, session) => {
+        const wasGuest = !currentUser;
         updateUserAuthUI(session ? session.user : null);
+        if (session && session.user && wasGuest) {
+            switchScreen('workspace-screen');
+            runHDLCompilation();
+        }
     });
 
     // Check current session on load
     supabaseClient.auth.getSession().then(({ data: { session } }) => {
         updateUserAuthUI(session ? session.user : null);
+        if (session && session.user) {
+            switchScreen('workspace-screen');
+            runHDLCompilation();
+        }
     });
 }
 
