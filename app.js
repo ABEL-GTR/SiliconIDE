@@ -357,24 +357,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById('reboot-system-btn').addEventListener('click', () => {
         playBeep('error');
-        if (confirm("Perform Hardware System Reboot? (All editor code and simulation timeline will be cleared)")) {
-            // Clear editor code
-            const codeInput = document.getElementById('code-input');
-            codeInput.value = "";
-            
-            // Clear compiler/linter state in parser
-            parser.resetState();
-            
-            // Re-run compilation to update diagnostics, simulator ports, stimulus panel, etc.
-            runHDLCompilation();
-            
-            // Update line numbers and overlay scroll
-            updateLineNumbers();
-            
-            // Focus code input and set cursor position to the very beginning (line 1)
-            codeInput.focus();
-            codeInput.setSelectionRange(0, 0);
-        }
+        // Clear editor code
+        const codeInput = document.getElementById('code-input');
+        codeInput.value = "";
+        
+        // Clear compiler/linter state in parser
+        parser.resetState();
+        
+        // Re-run compilation to update diagnostics, simulator ports, stimulus panel, etc.
+        runHDLCompilation();
+        
+        // Update line numbers and overlay scroll
+        updateLineNumbers();
+        
+        // Focus code input and set cursor position to the very beginning (line 1)
+        codeInput.focus();
+        codeInput.setSelectionRange(0, 0);
     });
 
     // Wire Card Selectors
