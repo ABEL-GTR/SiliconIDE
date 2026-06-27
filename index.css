@@ -185,7 +185,8 @@ body::before {
     color: var(--text-primary);
     font-family: 'Share Tech Mono', monospace;
     font-size: 0.9rem;
-    height: 100px;
+    min-height: 100px;
+    height: auto;
     margin-bottom: 20px;
     padding: 12px 15px;
 }
