@@ -52,10 +52,14 @@ class HDLParser {
 
         this.hasErrors = this.errors.some(e => e.severity === 'error');
 
-        // Compile logic simulation model for Verilog and SystemVerilog
-        if (!this.hasErrors && (this.language === 'verilog' || this.language === 'sysverilog')) {
+        // Compile logic simulation model
+        if (!this.hasErrors) {
             try {
-                this.compileVerilog(code);
+                if (this.language === 'verilog' || this.language === 'sysverilog') {
+                    this.compileVerilog(code);
+                } else if (this.language === 'vhdl') {
+                    this.compileVHDL(code);
+                }
             } catch (err) {
                 console.error("Simulation compilation failed:", err);
                 this.errors.push({
@@ -606,6 +610,83 @@ class HDLParser {
                 }
             }
         };
+    }
+
+    compileVHDL(code) {
+        // Strip comments first
+        const cleanCode = code.replace(/--.*$/gm, '');
+
+        // 1. Extract Entity Name
+        const entityMatch = /entity\s+(\w+)\s+is/i.exec(cleanCode);
+        if (entityMatch) {
+            this.moduleName = entityMatch[1];
+        }
+
+        // 2. Parse Port block
+        const portBlockMatch = /port\s*\(([\s\S]*?)\)\s*;/i.exec(cleanCode);
+        if (portBlockMatch) {
+            const portContent = portBlockMatch[1];
+            const portLines = portContent.split(';');
+            for (let pl of portLines) {
+                const trimmed = pl.trim();
+                if (trimmed === "") continue;
+                
+                const portRegex = /^([\w\s,]+)\s*:\s*(in|out)\s+(\w+)(?:\s*\(\s*(\d+)\s+(?:downto|to)\s+(\d+)\s*\))?/i;
+                const match = portRegex.exec(trimmed);
+                if (match) {
+                    const names = match[1].split(',').map(n => n.trim()).filter(n => n !== "");
+                    const direction = match[2].toLowerCase();
+                    const high = match[4] ? parseInt(match[4]) : 0;
+                    const low = match[5] ? parseInt(match[5]) : 0;
+                    
+                    for (let name of names) {
+                        this.ports.push({
+                            name,
+                            type: direction === 'in' ? 'input' : 'output',
+                            width: { high, low },
+                            isReg: false
+                        });
+                        if (direction === 'out') {
+                            this.wires.push({ name, width: { high, low } });
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Parse internal signals
+        const signalRegex = /signal\s+([\w\s,]+)\s*:\s*(\w+)(?:\s*\(\s*(\d+)\s+(?:downto|to)\s+(\d+)\s*\))?\s*(?::=\s*[^;]+)?;/gi;
+        let sigMatch;
+        while ((sigMatch = signalRegex.exec(cleanCode)) !== null) {
+            const names = sigMatch[1].split(',').map(n => n.trim()).filter(n => n !== "");
+            const high = sigMatch[3] ? parseInt(sigMatch[3]) : 0;
+            const low = sigMatch[4] ? parseInt(sigMatch[4]) : 0;
+            for (let name of names) {
+                this.wires.push({ name, width: { high, low } });
+            }
+        }
+
+        // 4. Parse concurrent signal assignments
+        const assignRegex = /(\w+)\s*<=\s*([^;]+);/g;
+        let assMatch;
+        while ((assMatch = assignRegex.exec(cleanCode)) !== null) {
+            const target = assMatch[1].trim();
+            let exprStr = assMatch[2].trim();
+            
+            let cleanExpr = exprStr
+                .replace(/\bxor\b/gi, '^')
+                .replace(/\bor\b/gi, '|')
+                .replace(/\band\b/gi, '&')
+                .replace(/\bnot\b/gi, '~');
+                
+            const compiled = this.compileExpression(cleanExpr);
+            this.assignments.push({
+                target,
+                exprStr,
+                func: compiled.func,
+                variables: compiled.variables
+            });
+        }
     }
 
     /**
