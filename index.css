@@ -36,6 +36,9 @@
     padding: 0;
     user-select: none;
 }
+button:focus, button:active, a:focus, a:active {
+    outline: none !important;
+}
 
 body, html {
     background-color: var(--bg-pcb);
