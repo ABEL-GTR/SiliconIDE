@@ -598,9 +598,42 @@ function loadActiveTemplate() {
     updateLineNumbers();
 }
 
+function detectLanguage(code) {
+    const clean = code.toLowerCase();
+    if (clean.includes('library ieee') || clean.includes('entity ') || clean.includes('architecture ') || clean.includes('std_logic')) {
+        return 'vhdl';
+    }
+    if (clean.includes('endmodule') || clean.includes('always @') || (clean.includes('module ') && !clean.includes('entity '))) {
+        if (clean.includes('always_comb') || clean.includes('always_ff') || clean.includes('logic ')) {
+            return 'sysverilog';
+        }
+        return 'verilog';
+    }
+    return null;
+}
+
 // 3. HDL Compiler Dispatcher
 function runHDLCompilation() {
     const code = document.getElementById('code-input').value;
+    
+    // Auto-detect language switch on paste
+    const detectedLang = detectLanguage(code);
+    if (detectedLang && detectedLang !== currentLanguage) {
+        currentLanguage = detectedLang;
+        document.getElementById('current-filename').innerText = currentLanguage === 'vhdl' ? 'main.vhd' : 'main.v';
+        document.getElementById('current-hdl-label').innerText = currentLanguage.toUpperCase();
+        
+        // Update active selector card class on the home screen
+        const cards = document.querySelectorAll('.selector-card');
+        cards.forEach(c => {
+            if (c.dataset.hdl === currentLanguage) {
+                c.classList.add('active');
+            } else {
+                c.classList.remove('active');
+            }
+        });
+    }
+
     const report = parser.analyze(code, currentLanguage);
 
     const badge = document.getElementById('compilation-status-badge');
