@@ -875,6 +875,48 @@ module bcd_to_7seg(
         endcase
     end
 endmodule`;
+    } else if (lower.includes('mux') || lower.includes('multiplexer') || lower.includes('multiplexor')) {
+        if (currentLanguage === 'vhdl') {
+            generatedVerilog = `-- Synthesized 4-to-1 Multiplexer
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+
+entity mux_4to1 is
+    Port (
+        a    : in  STD_LOGIC;
+        b    : in  STD_LOGIC;
+        c    : in  STD_LOGIC;
+        d    : in  STD_LOGIC;
+        sel1 : in  STD_LOGIC;
+        sel0 : in  STD_LOGIC;
+        y    : out STD_LOGIC
+    );
+end mux_4to1;
+
+architecture Behavioral of mux_4to1 is
+begin
+    y <= (not sel1 and not sel0 and a) or
+         (not sel1 and     sel0 and b) or
+         (    sel1 and not sel0 and c) or
+         (    sel1 and     sel0 and d);
+end Behavioral;`;
+        } else {
+            generatedVerilog = `// Synthesized 4-to-1 Multiplexer
+module mux_4to1(
+    input a,
+    input b,
+    input c,
+    input d,
+    input [1:0] sel,
+    output y
+);
+    // Multiplexer selection using continuous bitwise assignments
+    assign y = (~sel[1] & ~sel[0] & a) |
+               (~sel[1] &  sel[0] & b) |
+               ( sel[1] & ~sel[0] & c) |
+               ( sel[1] &  sel[0] & d);
+endmodule`;
+        }
     } else if (lower.includes('traffic') || lower.includes('fsm') || lower.includes('state')) {
         generatedVerilog = `// Synthesized Traffic Light Finite State Machine
 module traffic_light(
