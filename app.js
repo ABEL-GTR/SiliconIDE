@@ -911,10 +911,7 @@ module mux_4to1(
     output y
 );
     // Multiplexer selection using continuous bitwise assignments
-    assign y = (~sel[1] & ~sel[0] & a) |
-               (~sel[1] &  sel[0] & b) |
-               ( sel[1] & ~sel[0] & c) |
-               ( sel[1] &  sel[0] & d);
+    assign y = (~sel[1] & ~sel[0] & a) | (~sel[1] & sel[0] & b) | (sel[1] & ~sel[0] & c) | (sel[1] & sel[0] & d);
 endmodule`;
         }
     } else if (lower.includes('traffic') || lower.includes('fsm') || lower.includes('state')) {
