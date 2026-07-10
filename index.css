@@ -508,14 +508,14 @@ body::before {
 
 /* Grid layout for panels */
 .workspace-grid {
-    display: grid;
+    display: flex;
+    flex-direction: row;
     flex-grow: 1;
     gap: 8px;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
     height: calc(100vh - 50px);
     padding: 8px;
     position: relative;
+    overflow: hidden;
 }
 
 /* Individual Panel styling */
@@ -1553,4 +1553,178 @@ body::before {
         justify-content: space-between;
     }
 }
+
+/* ==========================================================================
+   MULTI-WINDOW WORKSPACE & WIZARD STYLING
+   ========================================================================== */
+.window-viewport {
+    display: none !important;
+    height: 100%;
+    width: 100%;
+    position: relative;
+    background: #020503;
+}
+.window-viewport.active {
+    display: flex !important;
+}
+
+/* Nav steps transitions */
+.nav-step {
+    transition: all 0.25s ease;
+}
+.nav-step.active {
+    color: var(--neon-cyan) !important;
+    text-shadow: 0 0 8px var(--neon-cyan-glow);
+}
+.nav-step.completed {
+    color: var(--neon-green) !important;
+    text-shadow: 0 0 8px var(--neon-green-glow);
+    opacity: 0.9 !important;
+    cursor: pointer !important;
+}
+.nav-step.completed .step-num {
+    border-color: var(--neon-green) !important;
+    background: rgba(0, 255, 102, 0.1) !important;
+}
+.nav-step.disabled {
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+}
+
+/* Workspace sub panels layout */
+.window-core-content {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+}
+.window-footer-actions {
+    background: #040905;
+    border-top: 1px solid var(--panel-border);
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+/* Three column layouts */
+.panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Mini Language Cards selector in Column 1 */
+.selector-grid-mini {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+}
+.selector-grid-mini .selector-card {
+    align-items: center;
+    background: #040905;
+    border: 1px solid var(--panel-border);
+    cursor: pointer;
+    display: flex;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 700;
+    justify-content: center;
+    padding: 10px;
+    transition: all 0.2s ease;
+}
+.selector-grid-mini .selector-card:hover {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 8px var(--neon-cyan-glow);
+}
+.selector-grid-mini .selector-card.active {
+    background: rgba(0, 229, 255, 0.05);
+    border-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+    text-shadow: 0 0 5px var(--neon-cyan-glow);
+}
+
+/* Tab button styling for upper/lower pane panels */
+.hdl-tab-selectors, .tb-tab-selectors {
+    display: flex;
+    gap: 4px;
+}
+.hdl-tab-btn, .tb-tab-btn {
+    background: #060e0a;
+    border: 1px solid var(--panel-border);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    transition: all 0.2s ease;
+}
+.hdl-tab-btn:hover, .tb-tab-btn:hover {
+    border-color: var(--neon-cyan);
+    color: var(--text-bright);
+}
+.hdl-tab-btn.active, .tb-tab-btn.active {
+    background: rgba(0, 229, 255, 0.15);
+    border-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+}
+
+.hdl-tab-content, .tb-tab-content {
+    display: none;
+    height: 100%;
+    overflow-y: auto;
+    padding: 10px;
+}
+.hdl-tab-content.active, .tb-tab-content.active {
+    display: block;
+}
+
+.generator-body-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: 100%;
+}
+
+.tb-quick-chip {
+    background: #050d08;
+    border: 1px solid var(--panel-border);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    padding: 3px 6px;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+.tb-quick-chip:hover {
+    border-color: var(--neon-cyan);
+    color: var(--text-bright);
+}
+
+/* Overwrite tab wrapper heights to account for subheaders */
+.tools-body {
+    height: calc(100% - 32px);
+    overflow: hidden;
+    position: relative;
+    background: var(--panel-bg);
+}
+
+/* Responsive columns scaling */
+@media (max-width: 1200px) {
+    .window-core-content {
+        flex-direction: column !important;
+        overflow-y: auto !important;
+    }
+    .panel {
+        flex: none !important;
+        width: 100% !important;
+        height: 500px !important;
+        border-right: none !important;
+        border-bottom: 2px solid var(--panel-border) !important;
+    }
+}
+
 

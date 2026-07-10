@@ -521,7 +521,7 @@ class HDLParser {
 
         // Prepend "state." to variables in the expression (using boundary check to avoid replacing subwords)
         for (let v of allKnown) {
-            jsExpr = jsExpr.replace(new RegExp('\\b' + v + '\\b', 'g'), `state.${v}`);
+            jsExpr = jsExpr.replace(new RegExp('(?<!state\\.)\\b' + v + '\\b', 'g'), `state.${v}`);
         }
 
         // Clean operators (Verilog already matches JS closely: &, |, ^, ~, &&, ||, +, -)
@@ -764,6 +764,176 @@ class HDLParser {
         }
 
         return nextState;
+    }
+
+    /**
+     * Parse and lint testbench code, and extract input stimulus timeline vectors
+     * @param {string} tbCode 
+     * @param {string} mainModuleName 
+     * @param {string} language 
+     * @returns {object} Testbench diagnostic report
+     */
+    analyzeTestbench(tbCode, mainModuleName = "uut", language = "verilog") {
+        const errors = [];
+        const suggestions = [];
+        let correctedCode = tbCode;
+        let stimulus = []; // [{ time: number, inputs: { name: value, ... } }]
+        
+        if (!tbCode || tbCode.trim() === "") {
+            errors.push({
+                line: 1,
+                severity: 'warning',
+                message: 'Testbench code is empty.',
+                suggestion: 'Enter or generate a testbench to begin stimulus verification.'
+            });
+            return { hasErrors: true, errors, suggestions, correctedCode, stimulus };
+        }
+
+        const lines = tbCode.split('\n');
+        const cleanCode = tbCode.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/--.*$/gm, '');
+
+        // 1. Basic Syntax Checking (semicolon and brace checks)
+        let braceStack = [];
+        let correctedLines = [...lines];
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            const lineNum = i + 1;
+            if (line.startsWith('//') || line.startsWith('--') || line.startsWith('/*') || line === "") continue;
+
+            // Check unmatched brackets/braces
+            for (let char of line) {
+                if (char === '(' || char === '{' || char === '[') {
+                    braceStack.push({ char, line: lineNum });
+                } else if (char === ')' || char === '}' || char === ']') {
+                    const last = braceStack.pop();
+                    let expected = '';
+                    if (char === ')') expected = '(';
+                    if (char === '}') expected = '{';
+                    if (char === ']') expected = '[';
+                    if (!last || last.char !== expected) {
+                        errors.push({
+                            line: lineNum,
+                            severity: 'error',
+                            message: `Testbench closing bracket mismatch: '${char}' does not match opening brackets.`,
+                            suggestion: `Verify parenthetical nesting on line ${lineNum}.`
+                        });
+                    }
+                }
+            }
+
+            // Semicolon checks for assignments in Verilog testbenches
+            if (language === 'verilog' || language === 'sysverilog') {
+                if (line.includes('=') && !line.endsWith(';') && !line.includes(';') && !line.includes('begin') && !line.includes('end') && !line.startsWith('#')) {
+                    errors.push({
+                        line: lineNum,
+                        severity: 'error',
+                        message: `Testbench syntax error: Missing semicolon at the end of assignment.`,
+                        suggestion: `Append a semicolon ';' to the end of line ${lineNum}.`
+                    });
+                    correctedLines[i] = correctedLines[i] + ';';
+                }
+            }
+        }
+
+        if (braceStack.length > 0) {
+            const unclosed = braceStack.pop();
+            errors.push({
+                line: unclosed.line,
+                severity: 'error',
+                message: `Testbench syntax error: Unclosed bracket/parenthesis '${unclosed.char}'.`,
+                suggestion: `Add corresponding closing bracket for the one opened on line ${unclosed.line}.`
+            });
+        }
+
+        correctedCode = correctedLines.join('\n');
+
+        // 2. Validate UUT Instantiation
+        if (mainModuleName && mainModuleName !== "unnamed") {
+            const uutRegex = new RegExp('\\b' + mainModuleName + '\\b', 'i');
+            if (!uutRegex.test(cleanCode)) {
+                errors.push({
+                    line: 1,
+                    severity: 'warning',
+                    message: `Module warning: UUT instantiation of '${mainModuleName}' not detected.`,
+                    suggestion: `Instantiate the active module '${mainModuleName}' in your testbench to drive its ports.`
+                });
+            }
+        }
+
+        // 3. Extract Stimulus Inputs Timeline
+        let currentTime = 0;
+        let currentInputs = {};
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim().toLowerCase();
+            if (line.startsWith('//') || line.startsWith('--')) continue;
+
+            // Check for delays in Verilog: e.g. #10 or #20
+            const verilogDelayMatch = /#(\d+)/.exec(line);
+            if (verilogDelayMatch) {
+                const delay = parseInt(verilogDelayMatch[1]);
+                if (delay > 0) {
+                    if (Object.keys(currentInputs).length > 0) {
+                        stimulus.push({
+                            time: currentTime,
+                            inputs: { ...currentInputs }
+                        });
+                    }
+                    currentTime += delay;
+                }
+            }
+
+            // Check VHDL wait statements: e.g. wait for 10 ns;
+            const vhdlDelayMatch = /wait\s+for\s+(\d+)\s*ns/i.exec(line);
+            if (vhdlDelayMatch) {
+                const delay = parseInt(vhdlDelayMatch[1]);
+                if (delay > 0) {
+                    if (Object.keys(currentInputs).length > 0) {
+                        stimulus.push({
+                            time: currentTime,
+                            inputs: { ...currentInputs }
+                        });
+                    }
+                    currentTime += delay;
+                }
+            }
+
+            // Extract assignments: e.g. a = 1; or a <= '0';
+            const assignRegex = /(\w+)\s*<*=\s*([^;]+)/g;
+            let match;
+            while ((match = assignRegex.exec(line)) !== null) {
+                const name = match[1].trim();
+                const valStr = match[2].trim().replace(/['"]/g, ''); // strip VHDL quotes
+                
+                let val = 0;
+                if (valStr.includes('b')) {
+                    val = parseInt(valStr.split('b')[1], 2) || 0;
+                } else {
+                    val = parseInt(valStr) || 0;
+                }
+                
+                if (!['signal', 'wait', 'reg', 'wire', 'logic', 'integer'].includes(name)) {
+                    currentInputs[name] = val;
+                }
+            }
+        }
+
+        if (Object.keys(currentInputs).length > 0) {
+            stimulus.push({
+                time: currentTime,
+                inputs: { ...currentInputs }
+            });
+        }
+
+        const hasErrors = errors.some(e => e.severity === 'error');
+        return {
+            hasErrors,
+            errors,
+            suggestions,
+            correctedCode,
+            stimulus
+        };
     }
 }
 

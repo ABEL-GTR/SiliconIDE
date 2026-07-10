@@ -4,118 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SiliconIDE // Hardware Description Workspace</title>
-    <!-- Web app logo favicon icon -->
-    <link rel="icon" type="image/png" href="favicon.png">
-    <!-- Google Fonts for retro-technical styling -->
+    <!-- Google Fonts for retro/futuristic styling -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Orbitron:wght@400..900&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
     <!-- Lucide Icons for clean tech icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="index.css?v=1.0.8">
+    <link rel="stylesheet" href="index.css?v=1.0.10">
     <!-- Supabase Auth and Client SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js"></script>
 </head>
 <body class="scanlines">
-    <!-- MASTER BOOT INTERFACE (Landing Screen) -->
-    <div id="boot-screen" class="screen active">
-        <div class="pcb-overlay"></div>
-        <div class="boot-spacer"></div>
-        <div class="boot-container">
-            <div class="boot-header">
-                <div class="glow-logo">SILICON<span>IDE</span></div>
-                <div class="digital-tag">CORE LOGIC SUITE v1.2.8 // BIOS RESOLUTION ACTIVE</div>
-            </div>
+    <!-- Overlay scanline CRT flicker -->
+    <div class="crt-glow"></div>
 
-            <!-- Terminal Self-Test Diagnostics -->
-            <div class="diagnostic-terminal">
-                <div class="term-line">> INITIALIZING SYSTEM HARDWARE ARCHITECTURE...</div>
-                <div class="term-line">> INTEGRATED SYNTAX PARSER REVISION 2.45 [OK]</div>
-                <div class="term-line">> SIMULATOR STIMULUS TIMELINE CALIBRATOR [OK]</div>
-                <div class="term-line glow-green">> READY TO ASSIGN LOGIC BLOCKS. CHOOSE HDL CORE:</div>
-            </div>
-
-            <!-- Selection Grid -->
-            <div class="selector-grid">
-                <!-- Verilog Card -->
-                <div class="selector-card active" data-hdl="verilog">
-                    <div class="card-chip-pins"><span></span><span></span><span></span><span></span></div>
-                    <div class="card-glow"></div>
-                    <div class="card-icon"><i data-lucide="cpu"></i></div>
-                    <div class="card-title">VERILOG</div>
-                    <div class="card-subtitle">IEEE 1364 STANDARD</div>
-                    <div class="card-desc">Fully compiled combinational & sequential hardware simulation. Live interactive timing diagrams and logic schematics.</div>
-                    <div class="card-badge">STABLE SIM</div>
-                </div>
-
-                <!-- VHDL Card -->
-                <div class="selector-card" data-hdl="vhdl">
-                    <div class="card-chip-pins"><span></span><span></span><span></span><span></span></div>
-                    <div class="card-glow"></div>
-                    <div class="card-icon"><i data-lucide="binary"></i></div>
-                    <div class="card-title">VHDL</div>
-                    <div class="card-subtitle">IEEE 1076 STANDARD</div>
-                    <div class="card-desc">High-level hardware modeling. Rich synthesis templates, strict syntax linting, and simulated execution logs.</div>
-                    <div class="card-badge">STABLE SIM</div>
-                </div>
-
-                <!-- SystemVerilog Card -->
-                <div class="selector-card" data-hdl="sysverilog">
-                    <div class="card-chip-pins"><span></span><span></span><span></span><span></span></div>
-                    <div class="card-glow"></div>
-                    <div class="card-icon"><i data-lucide="layers"></i></div>
-                    <div class="card-title">SYSTEMVERILOG</div>
-                    <div class="card-subtitle">IEEE 1800 STANDARD</div>
-                    <div class="card-desc">Advanced design and verification structure. Syntax inspection, modular constructs, and structural synthesis templates.</div>
-                    <div class="card-badge">COMPILER ONLY</div>
-                </div>
-            </div>
-
-            <!-- Preloaded Templates -->
-            <div class="template-section">
-                <div class="section-title"><i data-lucide="folder-open"></i> INITIAL BOARD PRESETS</div>
-                <div class="template-chips">
-                    <button class="template-chip active" data-template="and_gate">AND/OR Gate (Combinational)</button>
-                    <button class="template-chip" data-template="full_adder">Full Adder (Arithmetic)</button>
-                    <button class="template-chip" data-template="mux_2to1">2-to-1 Multiplexer (Data Path)</button>
-                    <button class="template-chip" data-template="d_flipflop">D Flip-Flop (Sequential)</button>
-                    <button class="template-chip" data-template="binary_counter">4-Bit Counter (Sequential/FSM)</button>
-                    <button class="template-chip" data-template="shift_register">Shift Register (Data Stream)</button>
-                </div>
-            </div>
-
-            <!-- Action Button -->
-            <button id="initialize-core-btn" class="glowing-btn">
-                <span class="btn-border"></span>
-                <span class="btn-text"><i data-lucide="terminal"></i> BOOT HDL LOGIC CORE</span>
-            </button>
-        </div>
-        <div class="boot-spacer"></div>
-    </div>
-
-    <!-- MAIN COGNITIVE WORKSPACE (Split IDE Screen) -->
-    <div id="workspace-screen" class="screen">
-        <!-- Top HUD Header -->
+    <div class="main-container">
+        <!-- TOP STATUS HUD HEADER -->
         <header class="hud-header">
             <div class="hud-left">
-                <div class="hud-logo" id="hud-home-btn"><i data-lucide="arrow-left" class="back-icon"></i> SILICON<span>IDE</span></div>
+                <div class="terminal-brand">
+                    <span class="brand-glow">SILICON_IDE</span>
+                    <span class="version-tag">v2.10.8</span>
+                </div>
                 <div class="hud-divider"></div>
-                <div class="hud-status-group">
-                    <span class="label">CORE:</span>
-                    <span class="value" id="current-hdl-label">VERILOG</span>
-                </div>
-                <div class="hud-status-group">
-                    <span class="label">ENGINE:</span>
-                    <span class="value glow-green" id="engine-status">ONLINE</span>
+                <div class="system-status">
+                    <span class="status-dot green"></span>
+                    <span class="status-text">COPROCESSOR ONLINE</span>
                 </div>
             </div>
-            <div class="hud-center">
-                <div class="digital-clock" id="hud-clock" style="display: none;"></div>
-            </div>
+            
             <div class="hud-right">
-                <!-- Supabase Authentication HUD panel -->
-                <div class="hud-status-group profile-hud" id="profile-container">
+                <!-- Authentication Status -->
+                <div class="auth-hud-widget" style="display:flex; align-items:center; gap:8px;">
                     <span class="led red" id="auth-status-led"></span>
                     <span class="value" id="auth-status-label">GUEST</span>
                     <button class="hud-btn highlight" id="auth-action-btn"><i data-lucide="log-in"></i> SIGN IN</button>
@@ -127,235 +48,458 @@
             </div>
         </header>
 
-        <!-- Dynamic Four-Pane Workspace Grid -->
-        <main class="workspace-grid">
+        <!-- WORKFLOW WIZARD NAV BAR -->
+        <div class="wizard-nav-bar" style="display:flex; justify-content:center; align-items:center; background:#040a06; border-bottom:1px solid #142a1b; padding:8px 20px; gap:15px; user-select:none;">
+            <div class="nav-step active" id="step-nav-entry" data-window="window-auth-entry" style="display:flex; align-items:center; gap:8px; cursor:pointer; font-family:'Orbitron',sans-serif; font-size:0.75rem; font-weight:700; color:var(--neon-cyan); text-shadow:0 0 5px var(--neon-cyan-glow); opacity:1; transition:all 0.2s ease;">
+                <span class="step-num" style="background:rgba(0,229,255,0.1); border:1px solid var(--neon-cyan); border-radius:50%; width:20px; height:20px; display:inline-flex; align-items:center; justify-content:center; font-size:0.65rem;">01</span>
+                <span class="step-label">LANG SETUP</span>
+            </div>
+            <div class="nav-arrow" style="color:var(--text-muted);"><i data-lucide="chevron-right"></i></div>
             
-            <!-- WINDOW 1: HDL CODE EDITOR -->
-            <section class="panel editor-panel" id="pane-editor">
-                <div class="panel-header">
-                    <div class="panel-title"><i data-lucide="code"></i> HDL CODE EDITOR</div>
-                    <div class="panel-actions">
-                        <span class="file-name" id="current-filename">main.v</span>
-                        <button class="panel-btn" id="editor-copy-btn" title="Copy to Clipboard"><i data-lucide="copy"></i></button>
-                        <button class="panel-btn" id="editor-download-btn" title="Download File"><i data-lucide="download"></i></button>
-                        <button class="panel-btn highlight-run" id="editor-compile-btn"><i data-lucide="play-circle"></i> RUN COMPILE</button>
+            <div class="nav-step disabled" id="step-nav-hdl" data-window="window-hdl-dev" style="display:flex; align-items:center; gap:8px; cursor:not-allowed; font-family:'Orbitron',sans-serif; font-size:0.75rem; font-weight:700; color:var(--text-muted); opacity:0.5; transition:all 0.2s ease;">
+                <span class="step-num" style="background:rgba(255,255,255,0.05); border:1px solid var(--panel-border); border-radius:50%; width:20px; height:20px; display:inline-flex; align-items:center; justify-content:center; font-size:0.65rem;">02</span>
+                <span class="step-label">HDL DEVELOPER</span>
+            </div>
+            <div class="nav-arrow" style="color:var(--text-muted);"><i data-lucide="chevron-right"></i></div>
+
+            <div class="nav-step disabled" id="step-nav-tb" data-window="window-tb-dev" style="display:flex; align-items:center; gap:8px; cursor:not-allowed; font-family:'Orbitron',sans-serif; font-size:0.75rem; font-weight:700; color:var(--text-muted); opacity:0.5; transition:all 0.2s ease;">
+                <span class="step-num" style="background:rgba(255,255,255,0.05); border:1px solid var(--panel-border); border-radius:50%; width:20px; height:20px; display:inline-flex; align-items:center; justify-content:center; font-size:0.65rem;">03</span>
+                <span class="step-label">TESTBENCH LAB</span>
+            </div>
+            <div class="nav-arrow" style="color:var(--text-muted);"><i data-lucide="chevron-right"></i></div>
+
+            <div class="nav-step disabled" id="step-nav-sim" data-window="window-simulator" style="display:flex; align-items:center; gap:8px; cursor:not-allowed; font-family:'Orbitron',sans-serif; font-size:0.75rem; font-weight:700; color:var(--text-muted); opacity:0.5; transition:all 0.2s ease;">
+                <span class="step-num" style="background:rgba(255,255,255,0.05); border:1px solid var(--panel-border); border-radius:50%; width:20px; height:20px; display:inline-flex; align-items:center; justify-content:center; font-size:0.65rem;">04</span>
+                <span class="step-label">LOGIC SIMULATOR</span>
+            </div>
+        </div>
+
+        <!-- Dynamic Multi-Window Viewports Container -->
+        <main class="workspace-grid" style="display:block; position:relative; overflow:hidden; flex-grow:1; height:calc(100vh - 120px);">
+            
+            <!-- WINDOW 1: IDENTITY GATEWAY & LANGUAGE CORE -->
+            <section class="window-viewport active" id="window-auth-entry" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px; box-sizing:border-box; height:100%; width:100%; overflow-y:auto; gap:30px;">
+                <div class="gateway-card" style="background:rgba(4,9,5,0.85); border:2px solid var(--panel-border); box-shadow:0 0 20px var(--neon-cyan-glow); width:100%; max-width:550px; padding:30px; box-sizing:border-box; border-radius:4px; display:flex; flex-direction:column; gap:20px;">
+                    <div class="gateway-header" style="border-bottom:1px solid var(--panel-border); padding-bottom:15px; text-align:center;">
+                        <h2 style="font-family:'Orbitron',sans-serif; font-size:1.2rem; color:var(--text-bright); text-shadow:0 0 10px var(--neon-cyan-glow); margin:0;"><i data-lucide="shield-check" style="color:var(--neon-cyan); height:22px; width:22px; vertical-align:middle; margin-right:8px;"></i> SILICONIDE INITIALIZATION</h2>
+                        <p style="font-size:0.8rem; color:var(--text-muted); margin:5px 0 0 0;">Secure multi-language Hardware Description synthesis and simulation deck</p>
                     </div>
-                </div>
-                <div class="panel-body editor-body">
-                    <div class="line-numbers" id="editor-line-numbers"></div>
-                    <textarea class="code-textarea" id="code-input" spellcheck="false" autocomplete="off" placeholder="Write or paste your HDL code here..."></textarea>
-                    <div class="code-highlight-overlay" id="code-overlay"></div>
-                </div>
-                <div class="panel-footer">
-                    <span class="footer-status" id="editor-cursor-pos">Ln 1, Col 1</span>
-                    <span class="footer-status" id="compilation-status-badge"><span class="led green"></span> COMPILED</span>
-                </div>
+
+                    <!-- GUEST SIGN-IN PORTAL VIEW -->
+                    <div id="gateway-auth-locked-view" style="display:flex; flex-direction:column; align-items:center; gap:20px; text-align:center; padding:10px 0;">
+                        <div style="background:rgba(255, 159, 0, 0.05); border:1px dashed var(--neon-amber); border-radius:2px; padding:20px; display:flex; flex-direction:column; align-items:center; gap:10px; width:100%; box-sizing:border-box;">
+                            <i data-lucide="lock" style="color:var(--neon-amber); height:32px; width:32px; filter:drop-shadow(0 0 5px var(--neon-amber-glow));"></i>
+                            <span style="font-family:'Orbitron',sans-serif; font-size:0.9rem; font-weight:700; color:var(--text-bright);">ENTRY COMPILER LOCKED</span>
+                            <span style="font-size:0.75rem; color:var(--text-muted); line-height:1.4;">Authentication with a Google account is required to select languages, load logic templates, and run compiler simulation engines.</span>
+                        </div>
+                        <button class="glowing-btn highlight" id="gateway-auth-signin-btn" style="width:100%; height:45px;">
+                            <span class="btn-border" style="border-color:var(--neon-cyan);"></span>
+                            <span class="btn-text" style="font-size:0.85rem; font-weight:bold;"><i data-lucide="log-in"></i> SIGN IN WITH GOOGLE</span>
+                        </button>
+                    </div>
+
+                    <!-- LOGGED-IN CONTROLS VIEW -->
+                    <div id="gateway-auth-unlocked-view" style="display:none; flex-direction:column; gap:20px;">
+                        <div>
+                            <div class="section-title" style="font-family:'Orbitron',sans-serif; font-size:0.75rem; font-weight:700; color:var(--text-bright); margin-bottom:8px;"><i data-lucide="cpu" style="color:var(--neon-cyan); height:14px; width:14px; vertical-align:middle; margin-right:4px;"></i> TARGET LANGUAGE CORE</div>
+                            <div class="selector-grid-mini" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:0;">
+                                <div class="selector-card active" data-hdl="verilog" style="cursor:pointer; text-align:center; border:1px solid var(--panel-border); background:#020503; padding:10px 0; font-family:'Orbitron'; font-size:0.75rem; font-weight:700; transition:all 0.2s;">
+                                    <div class="card-title">VERILOG</div>
+                                </div>
+                                <div class="selector-card" data-hdl="vhdl" style="cursor:pointer; text-align:center; border:1px solid var(--panel-border); background:#020503; padding:10px 0; font-family:'Orbitron'; font-size:0.75rem; font-weight:700; transition:all 0.2s;">
+                                    <div class="card-title">VHDL</div>
+                                </div>
+                                <div class="selector-card" data-hdl="sysverilog" style="cursor:pointer; text-align:center; border:1px solid var(--panel-border); background:#020503; padding:10px 0; font-family:'Orbitron'; font-size:0.75rem; font-weight:700; transition:all 0.2s;">
+                                    <div class="card-title">SYSVERILOG</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="section-title" style="font-family:'Orbitron',sans-serif; font-size:0.75rem; font-weight:700; color:var(--text-bright); margin-bottom:8px;"><i data-lucide="folder-open" style="color:var(--neon-cyan); height:14px; width:14px; vertical-align:middle; margin-right:4px;"></i> CHIP DESIGN PRESET</div>
+                            <div class="template-chips" style="display:grid; grid-template-columns:repeat(2,1fr); gap:6px;">
+                                <button class="template-chip active" data-template="and_gate" style="font-size:0.7rem; padding:8px; text-align:left; border-radius:2px;">AND/OR Gate</button>
+                                <button class="template-chip" data-template="full_adder" style="font-size:0.7rem; padding:8px; text-align:left; border-radius:2px;">Full Adder</button>
+                                <button class="template-chip" data-template="mux_2to1" style="font-size:0.7rem; padding:8px; text-align:left; border-radius:2px;">2-to-1 Mux</button>
+                                <button class="template-chip" data-template="d_flipflop" style="font-size:0.7rem; padding:8px; text-align:left; border-radius:2px;">D Flip-Flop</button>
+                                <button class="template-chip" data-template="binary_counter" style="font-size:0.7rem; padding:8px; text-align:left; border-radius:2px;">4-Bit Counter</button>
+                                <button class="template-chip" data-template="shift_register" style="font-size:0.7rem; padding:8px; text-align:left; border-radius:2px;">Shift Register</button>
+                                <button class="template-chip" data-template="new_project" style="font-size:0.7rem; padding:8px; text-align:center; border-radius:2px; grid-column:span 2; border-color:rgba(0,229,255,0.3); color:var(--neon-cyan); font-weight:bold;">(New Project)</button>
+                            </div>
+                        </div>
+
+                        <div class="gateway-footer-profile" style="border-top:1px solid var(--panel-border); padding-top:15px; display:flex; justify-content:space-between; align-items:center;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span class="led green" style="height:8px; width:8px; border-radius:50%; box-shadow:0 0 5px var(--neon-green-glow);"></span>
+                                <span id="gateway-user-email" style="font-family:'Share Tech Mono'; font-size:0.8rem; color:var(--text-bright);">USER@EMAIL.COM</span>
+                            </div>
+                            <button id="gateway-signout-btn" class="hud-btn" style="font-size:0.7rem; padding:4px 8px;"><i data-lucide="log-out"></i> SIGN OUT</button>
+                        </div>
+
+                        <button class="glowing-btn highlight" id="gateway-enter-btn" style="width:100%; margin-top:5px; height:45px;">
+                            <span class="btn-border" style="border-color:var(--neon-cyan);"></span>
+                            <span class="btn-text" style="font-size:0.85rem; font-weight:bold;"><i data-lucide="terminal"></i> INITIALIZE COMPILER WORKSPACE</span>
+                        </button>
+                    </div>
             </section>
 
-            <!-- WINDOW 2: DIAGNOSTIC & CORRECTIVE CONSOLE -->
-            <section class="panel diagnostic-panel" id="pane-diagnostic">
-                <div class="panel-header">
-                    <div class="panel-title"><i data-lucide="shield-alert"></i> DIAGNOSTIC & AUTO-CORRECTOR</div>
-                    <div class="panel-actions">
-                        <span class="status-indicator yellow" id="diagnostic-summary-badge">ANALYZER READY</span>
-                    </div>
-                </div>
-                <div class="panel-body diagnostic-body">
-                    <!-- Split tabs inside diagnostics: Errors List / Auto-Correct Suggestion -->
-                    <div class="diagnostic-tabs">
-                        <button class="diag-tab active" id="tab-errors">SYSTEM DIAGNOSTICS</button>
-                        <button class="diag-tab" id="tab-autocorrect">PROPOSED PATCH (DIFF)</button>
-                    </div>
-
-                    <!-- Panel View 1: Errors & Suggestions -->
-                    <div class="tab-content active" id="content-errors">
-                        <div class="diagnostics-list" id="diagnostic-list-container">
-                            <div class="diagnostic-empty">
-                                <i data-lucide="check-circle" class="glow-green-icon"></i>
-                                <h3>SYSTEM HEALTH STABLE</h3>
-                                <p>No syntax errors or compile warnings detected. Use the button in the editor panel to compile and lint manually.</p>
+            <!-- WINDOW 2: HDL DEVELOPER WORKSPACE -->
+            <section class="window-viewport" id="window-hdl-dev" style="display:none; flex-direction:column; height:100%; width:100%; overflow:hidden;">
+                <!-- Upper Row: Three separate columns (Editor, Diagnostics, AI Synth) -->
+                <div class="window-core-content" style="display:flex; flex:1; min-height:0; width:100%; border-bottom:2px solid var(--panel-border);">
+                    <!-- Part 1: Writing the code -->
+                    <div class="panel hdl-editor-panel" style="flex:1 1 42%; border-right:2px solid var(--panel-border); display:flex; flex-direction:column; overflow:hidden;">
+                        <div class="panel-header">
+                            <div class="panel-title"><i data-lucide="code"></i> HDL CODE EDITOR</div>
+                            <div class="panel-actions">
+                                <span class="file-name" id="current-filename">main.v</span>
+                                <button class="panel-btn" id="editor-copy-btn" title="Copy to Clipboard"><i data-lucide="copy"></i></button>
+                                <button class="panel-btn" id="editor-download-btn" title="Download File"><i data-lucide="download"></i></button>
                             </div>
+                        </div>
+                        <div class="panel-body editor-body" style="flex:1; min-height:0;">
+                            <div class="line-numbers" id="editor-line-numbers"></div>
+                            <textarea class="code-textarea" id="code-input" spellcheck="false" autocomplete="off" placeholder="Write or paste your HDL code here..."></textarea>
+                            <div class="code-highlight-overlay" id="code-overlay"></div>
+                        </div>
+                        <div class="panel-footer">
+                            <span class="footer-status" id="editor-cursor-pos">Ln 1, Col 1</span>
                         </div>
                     </div>
 
-                    <!-- Panel View 2: Proposed Auto-Correct Code -->
-                    <div class="tab-content" id="content-autocorrect">
-                        <div class="autocorrect-workspace">
-                            <div class="diff-container">
-                                <div class="diff-header">
-                                    <span>DETECTED DEFECTS</span>
-                                    <span>AUTO-RECONSTRUCTED LOGIC</span>
-                                </div>
-                                <div class="diff-body" id="diff-view-area">
-                                    <!-- Populated dynamically -->
-                                    <div class="diff-placeholder">No modifications recommended. Syntactically clean.</div>
+                    <!-- Part 2: Error detector and auto error corrector -->
+                    <div class="panel hdl-diagnostics-panel" style="flex:1 1 28%; border-right:2px solid var(--panel-border); display:flex; flex-direction:column; overflow:hidden;">
+                        <div class="panel-header">
+                            <div class="panel-title"><i data-lucide="alert-triangle"></i> DIAGNOSTICS & AUTO-CORRECTOR</div>
+                        </div>
+                        <div class="panel-body tools-body" style="flex:1; min-height:0; display:flex; flex-direction:column; gap:15px; padding:15px; box-sizing:border-box; overflow-y:auto;">
+                            <!-- Diagnostics errors list -->
+                            <div class="diagnostics-list" id="diagnostic-list-container" style="flex:1; min-height:0; overflow-y:auto; border:1px solid var(--panel-border); background:#020503; padding:10px;">
+                                <div class="diagnostic-empty">
+                                    <i data-lucide="check-circle" class="glow-green-icon"></i>
+                                    <h3>SYSTEM HEALTH STABLE</h3>
+                                    <p>No compile warnings detected.</p>
                                 </div>
                             </div>
-                            <button id="apply-patch-btn" class="glowing-btn action-btn" disabled>
-                                <span class="btn-border"></span>
-                                <span class="btn-text"><i data-lucide="zap"></i> INJECT CORRECTIVE CODE PATTERN</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="panel-footer">
-                    <span class="footer-status" id="diagnostic-timestamp">INTEGRITY CHECK PASS</span>
-                </div>
-            </section>
-
-            <!-- WINDOW 3: NEURAL LOGIC SYNTHESIZER (AI GENERATOR) -->
-            <section class="panel generator-panel" id="pane-generator">
-                <div class="panel-header">
-                    <div class="panel-title"><i data-lucide="cpu"></i> NEURAL SYNTHESIS LAB</div>
-                    <div class="panel-actions">
-                        <span class="hdl-badge">AI LOGIC CO-PROCESSOR</span>
-                    </div>
-                </div>
-                <div class="panel-body generator-body">
-                    <!-- Auth / Subscription Lock Overlay -->
-                    <div class="neural-lock-overlay" id="synth-lock-overlay">
-                        <div class="lock-box">
-                            <i data-lucide="shield-alert" class="lock-icon"></i>
-                            <h3 id="lock-title">COPROCESSOR INTERLOCK ACTIVE</h3>
-                            <p id="lock-desc">Neural Logic Synthesis cores require Sign-In with Google & an active Google Gemini subscription.</p>
-                            <div class="lock-actions" id="lock-actions-container">
-                                <button class="glowing-btn" id="lock-signin-btn">
+                            <!-- Corrector Patch Diff -->
+                            <div class="autocorrect-workspace" style="flex:1.2; display:flex; flex-direction:column; gap:10px; min-height:0;">
+                                <div class="diff-container" style="flex:1; min-height:0; display:flex; flex-direction:column;">
+                                    <div class="diff-header" style="font-family:'Orbitron'; font-size:0.7rem; color:var(--text-muted); display:flex; justify-content:space-between; padding:4px 8px; background:#040a06; border:1px solid var(--panel-border); border-bottom:none;">
+                                        <span>DIFFERENCE WORKSPACE</span>
+                                    </div>
+                                    <div class="diff-body" id="diff-view-area" style="flex:1; border:1px solid var(--panel-border); background:#020503; overflow-y:auto; font-family:'JetBrains Mono',monospace; font-size:0.75rem; padding:8px;">
+                                        <div class="diff-placeholder" style="color:var(--text-muted);">No active defects recommended.</div>
+                                    </div>
+                                </div>
+                                <button id="apply-patch-btn" class="glowing-btn action-btn" style="width:100%; height:32px;" disabled>
                                     <span class="btn-border"></span>
-                                    <span class="btn-text"><i data-lucide="log-in"></i> SIGN IN WITH GOOGLE</span>
+                                    <span class="btn-text" style="font-size:0.7rem;"><i data-lucide="zap"></i> INJECT CORRECTIVE CODE PATTERN</span>
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- API Key Settings Widget -->
-                    <div class="api-key-widget">
-                        <div class="widget-row">
-                            <label for="gemini-api-key">GEMINI API KEY:</label>
-                            <input type="password" id="gemini-api-key" placeholder="Enter API Key (localStorage persistent)..." />
-                            <button id="save-api-key-btn" class="hud-btn"><i data-lucide="save"></i> SAVE</button>
+                    <!-- Part 3: AI platform for code generation -->
+                    <div class="panel hdl-ai-panel" style="flex:1 1 30%; display:flex; flex-direction:column; overflow:hidden;">
+                        <div class="panel-header">
+                            <div class="panel-title"><i data-lucide="brain"></i> NEURAL COPROCESSOR CODESYNTH</div>
                         </div>
-                    </div>
+                        <div class="panel-body tools-body" style="flex:1; min-height:0; position:relative;">
+                            <!-- Auth / Subscription Lock Overlay -->
+                            <div class="neural-lock-overlay" id="synth-lock-overlay" style="position: absolute; top:0; left:0; right:0; bottom:0; background:rgba(2,5,3,0.95); z-index:100; display:flex; align-items:center; justify-content:center; padding:20px; text-align:center;">
+                                <div class="lock-box" style="max-width:300px; display:flex; flex-direction:column; align-items:center; gap:10px;">
+                                    <i data-lucide="shield-alert" class="lock-icon" style="color:var(--neon-red); height:32px; width:32px; filter:drop-shadow(0 0 5px var(--neon-red-glow));"></i>
+                                    <h3 id="lock-title" style="font-family:'Orbitron',sans-serif; font-size:0.9rem; color:var(--text-bright);">COPROCESSOR INTERLOCK ACTIVE</h3>
+                                    <p id="lock-desc" style="font-size:0.75rem; color:var(--text-muted); line-height:1.4;">Neural Logic Synthesis cores require Sign-In with Google & an active Google Gemini subscription.</p>
+                                    <div class="lock-actions" id="lock-actions-container" style="width:100%;">
+                                        <button class="glowing-btn" id="lock-signin-btn" style="width:100%;">
+                                            <span class="btn-border"></span>
+                                            <span class="btn-text" style="font-size:0.75rem;"><i data-lucide="log-in"></i> SIGN IN WITH GOOGLE</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
 
-                    <div class="prompt-area">
-                        <label for="synth-prompt">SPECIFY LOGIC SPECIFICATIONS:</label>
-                        <textarea id="synth-prompt" placeholder="e.g. Design a 4-to-16 decoder with an enable pin, active low outputs..."></textarea>
-                    </div>
-                    <div class="prompt-quick-chips">
-                        <span class="quick-chip" data-prompt="Design an 8-bit bidirectional shift register with synchronous load and clear.">Shift Register</span>
-                        <span class="quick-chip" data-prompt="Create a BCD to 7-segment display decoder module.">7-Segment Decoder</span>
-                        <span class="quick-chip" data-prompt="Write a traffic light controller FSM with states: RED, GREEN, YELLOW, and timing variables.">Traffic FSM</span>
-                        <span class="quick-chip" data-prompt="Create a 4-bit ALU with Operations: ADD(00), SUB(01), AND(10), OR(11).">4-Bit ALU</span>
-                    </div>
-                    <div class="synth-actions">
-                        <button class="glowing-btn" id="generate-code-btn">
-                            <span class="btn-border"></span>
-                            <span class="btn-text"><i data-lucide="wand2"></i> GENERATE LOGIC CODE</span>
-                        </button>
-                    </div>
-                    
-                    <div class="generator-terminal-wrapper">
-                        <div class="terminal-header">
-                            <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
-                            <span class="term-title">SYNTHESIS PROCESSOR CONSOLE</span>
-                        </div>
-                        <div class="generator-terminal" id="synth-terminal-log">
-                            <div class="term-line opacity-50">Awaiting prompt parameters...</div>
-                        </div>
-                    </div>
+                            <div class="generator-body-inner" style="height:100%; display:flex; flex-direction:column; gap:12px; padding:15px; box-sizing:border-box; overflow-y:auto;">
+                                <div class="api-key-widget">
+                                    <div class="widget-row" style="display:flex; gap:8px; align-items:center;">
+                                        <label for="gemini-api-key" style="font-family:'Share Tech Mono'; font-size:0.75rem; color:var(--text-muted);">API KEY:</label>
+                                        <input type="password" id="gemini-api-key" placeholder="Enter API Key..." style="background:#020503; color:var(--neon-cyan); border:1px solid var(--panel-border); height:26px; outline:none; padding:0 8px; flex:1; font-family:'Share Tech Mono';" />
+                                        <button id="save-api-key-btn" class="hud-btn" style="height:26px;"><i data-lucide="save"></i></button>
+                                    </div>
+                                </div>
 
-                    <div class="synth-result-container" id="synth-result-box" style="display: none;">
-                        <div class="result-header">
-                            <span>SYNTHESIZED SOURCE CODE</span>
-                            <button id="inject-editor-btn" class="hud-btn highlight"><i data-lucide="corner-down-left"></i> INJECT TO EDITOR</button>
+                                <div class="prompt-area" style="display:flex; flex-direction:column; gap:6px;">
+                                    <label for="synth-prompt" style="font-family:'Share Tech Mono'; font-size:0.75rem; color:var(--text-bright);">SPECIFY LOGIC SPECIFICATIONS:</label>
+                                    <textarea id="synth-prompt" placeholder="Describe logic module structure..." style="background:#020503; color:#a1bca8; border:1px solid var(--panel-border); font-family:'JetBrains Mono'; font-size:0.75rem; outline:none; padding:8px; resize:none; height:80px;"></textarea>
+                                </div>
+                                <div class="prompt-quick-chips" style="display:flex; flex-wrap:wrap; gap:5px;">
+                                    <span class="quick-chip" data-prompt="Design an 8-bit bidirectional shift register with synchronous load and clear.">Shift Register</span>
+                                    <span class="quick-chip" data-prompt="Create a BCD to 7-segment display decoder module.">7-Segment Decoder</span>
+                                    <span class="quick-chip" data-prompt="Write a traffic light controller FSM with states: RED, GREEN, YELLOW.">Traffic FSM</span>
+                                    <span class="quick-chip" data-prompt="Create a 4-bit ALU with Operations: ADD(00), SUB(01), AND(10), OR(11).">4-Bit ALU</span>
+                                    <span class="quick-chip" data-prompt="Design a 4 to 1 mux.">4-to-1 Mux</span>
+                                </div>
+                                <div class="synth-actions">
+                                    <button class="glowing-btn" id="generate-code-btn" style="width:100%;">
+                                        <span class="btn-border"></span>
+                                        <span class="btn-text"><i data-lucide="wand2"></i> GENERATE LOGIC CODE</span>
+                                    </button>
+                                </div>
+                                
+                                <div class="generator-terminal-wrapper" style="flex:1; min-height:80px;">
+                                    <div class="generator-terminal" id="synth-terminal-log" style="height:100%; background:#020503; border:1px solid var(--panel-border); padding:8px; overflow-y:auto; font-family:'Share Tech Mono'; font-size:0.75rem;">
+                                        <div class="term-line opacity-50">Awaiting prompt parameters...</div>
+                                    </div>
+                                </div>
+
+                                <div class="synth-result-container" id="synth-result-box" style="display: none; flex-direction:column; gap:6px;">
+                                    <div class="result-header" style="display:flex; justify-content:space-between; align-items:center;">
+                                        <span style="font-family:'Orbitron'; font-size:0.7rem; color:var(--neon-cyan);">SYNTHESIZED CODE</span>
+                                        <button id="inject-editor-btn" class="hud-btn highlight"><i data-lucide="corner-down-left"></i> INJECT</button>
+                                    </div>
+                                    <pre class="synthesized-pre" style="margin:0; border:1px solid var(--panel-border); background:#020503; padding:8px; overflow:auto; max-height:120px;"><code id="synthesized-code-box" style="font-family:'JetBrains Mono'; font-size:0.75rem; color:#00ff66;"></code></pre>
+                                </div>
+                            </div>
                         </div>
-                        <pre class="synthesized-pre"><code id="synthesized-code-box"></code></pre>
                     </div>
                 </div>
-                <div class="panel-footer">
-                    <span class="footer-status">NEURAL MATRIX ENGINE STANDBY</span>
+
+                <!-- Last part: Compile Button -->
+                <div class="window-footer-actions" style="background:#040905; border-top:1px solid var(--panel-border); padding:15px; display:flex; justify-content:space-between; align-items:center; gap:20px;">
+                    <div style="display:flex; align-items:center; gap:15px;">
+                        <span class="footer-status" id="compilation-status-badge"><span class="led green"></span> READY FOR COMPILATION</span>
+                        <span class="footer-status" id="diagnostic-timestamp">INTEGRITY CHECK PASS</span>
+                    </div>
+                    <button class="glowing-btn highlight" id="editor-compile-btn" style="width:250px;">
+                        <span class="btn-border" style="border-color:var(--neon-cyan);"></span>
+                        <span class="btn-text"><i data-lucide="play-circle"></i> COMPILE HDL MODULE</span>
+                    </button>
                 </div>
             </section>
 
-            <!-- WINDOW 4: SIMULATION SYSTEM & ANALYZER -->
-            <section class="panel simulation-panel" id="pane-simulator">
-                <div class="panel-header">
-                    <div class="panel-title"><i data-lucide="activity"></i> LOGIC ANALYZER & SIMULATOR</div>
-                    <div class="panel-actions">
-                        <div class="sim-view-tabs">
-                            <button class="sim-tab active" id="sim-tab-wave"><i data-lucide="trending-up"></i> WAVEFORM</button>
-                            <button class="sim-tab" id="sim-tab-schematic"><i data-lucide="network"></i> SCHEMATIC</button>
-                            <button class="sim-tab" id="sim-tab-console"><i data-lucide="terminal"></i> SIM LOG</button>
+            <!-- WINDOW 3: TESTBENCH DEVELOPER LAB -->
+            <section class="window-viewport" id="window-tb-dev" style="display:none; flex-direction:column; height:100%; width:100%; overflow:hidden;">
+                <!-- Upper Row: Three separate columns (TB Editor, TB Diagnostics, TB AI) -->
+                <div class="window-core-content" style="display:flex; flex:1; min-height:0; width:100%; border-bottom:2px solid var(--panel-border);">
+                    <!-- Part 1: Writing the testbench code -->
+                    <div class="panel tb-editor-panel" style="flex:1 1 42%; border-right:2px solid var(--panel-border); display:flex; flex-direction:column; overflow:hidden;">
+                        <div class="panel-header">
+                            <div class="panel-title"><i data-lucide="scroll"></i> TESTBENCH CODE EDITOR</div>
+                            <div class="panel-actions">
+                                <span class="file-name" id="tb-filename">tb_main.v</span>
+                                <button class="panel-btn" id="tb-copy-btn" title="Copy to Clipboard"><i data-lucide="copy"></i></button>
+                                <button class="panel-btn" id="tb-download-btn" title="Download File"><i data-lucide="download"></i></button>
+                            </div>
+                        </div>
+                        <div class="panel-body editor-body" style="flex:1; min-height:0;">
+                            <div class="line-numbers" id="tb-line-numbers"></div>
+                            <textarea class="code-textarea" id="testbench-input" spellcheck="false" autocomplete="off" placeholder="Write or paste your HDL Testbench code here..."></textarea>
+                            <div class="code-highlight-overlay" id="tb-overlay"></div>
+                        </div>
+                        <div class="panel-footer">
+                            <span class="footer-status" id="tb-cursor-pos">Ln 1, Col 1</span>
+                        </div>
+                    </div>
+
+                    <!-- Part 2: Testbench error detection and auto corrector -->
+                    <div class="panel tb-diagnostics-panel" style="flex:1 1 28%; border-right:2px solid var(--panel-border); display:flex; flex-direction:column; overflow:hidden;">
+                        <div class="panel-header">
+                            <div class="panel-title"><i data-lucide="check-square"></i> TESTBENCH LINTER</div>
+                        </div>
+                        <div class="panel-body tools-body" style="flex:1; min-height:0; display:flex; flex-direction:column; gap:15px; padding:15px; box-sizing:border-box; overflow-y:auto;">
+                            <!-- Diagnostics list -->
+                            <div class="diagnostics-list" id="tb-diagnostic-list-container" style="flex:1; min-height:0; overflow-y:auto; border:1px solid var(--panel-border); background:#020503; padding:10px;">
+                                <div class="diagnostic-empty">
+                                    <i data-lucide="check-circle" class="glow-green-icon"></i>
+                                    <h3>TESTBENCH HEALTH STABLE</h3>
+                                    <p>No syntax errors detected.</p>
+                                </div>
+                            </div>
+                            <!-- Diff view patch -->
+                            <div class="autocorrect-workspace" style="flex:1.2; display:flex; flex-direction:column; gap:10px; min-height:0;">
+                                <div class="diff-container" style="flex:1; min-height:0; display:flex; flex-direction:column;">
+                                    <div class="diff-header" style="font-family:'Orbitron'; font-size:0.7rem; color:var(--text-muted); display:flex; justify-content:space-between; padding:4px 8px; background:#040a06; border:1px solid var(--panel-border); border-bottom:none;">
+                                        <span>PROPOSED TB PATCH</span>
+                                    </div>
+                                    <div class="diff-body" id="tb-diff-view-area" style="flex:1; border:1px solid var(--panel-border); background:#020503; overflow-y:auto; font-family:'JetBrains Mono',monospace; font-size:0.75rem; padding:8px;">
+                                        <div class="diff-placeholder" style="color:var(--text-muted);">No modifications recommended.</div>
+                                    </div>
+                                </div>
+                                <button id="tb-apply-patch-btn" class="glowing-btn action-btn" style="width:100%; height:32px;" disabled>
+                                    <span class="btn-border"></span>
+                                    <span class="btn-text" style="font-size:0.7rem;"><i data-lucide="zap"></i> APPLY TB CORRECTIONS</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Part 3: Testbench AI platform -->
+                    <div class="panel tb-ai-panel" style="flex:1 1 30%; display:flex; flex-direction:column; overflow:hidden;">
+                        <div class="panel-header">
+                            <div class="panel-title"><i data-lucide="brain"></i> TB GENERATOR COPROCESSOR</div>
+                        </div>
+                        <div class="panel-body tools-body" style="flex:1; min-height:0; position:relative;">
+                            <!-- Auth / Subscription Lock Overlay -->
+                            <div class="neural-lock-overlay" id="tb-synth-lock-overlay" style="position: absolute; top:0; left:0; right:0; bottom:0; background:rgba(2,5,3,0.95); z-index:100; display:flex; align-items:center; justify-content:center; padding:20px; text-align:center;">
+                                <div class="lock-box" style="max-width:300px; display:flex; flex-direction:column; align-items:center; gap:10px;">
+                                    <i data-lucide="shield-alert" class="lock-icon" style="color:var(--neon-red); height:32px; width:32px; filter:drop-shadow(0 0 5px var(--neon-red-glow));"></i>
+                                    <h3 id="tb-lock-title" style="font-family:'Orbitron',sans-serif; font-size:0.9rem; color:var(--text-bright);">COPROCESSOR INTERLOCK ACTIVE</h3>
+                                    <p id="tb-lock-desc" style="font-size:0.75rem; color:var(--text-muted); line-height:1.4;">Testbench AI Synthesis cores require Sign-In with Google & an active Google Gemini subscription.</p>
+                                    <div class="lock-actions" id="tb-lock-actions-container" style="width:100%;">
+                                        <button class="glowing-btn" id="tb-lock-signin-btn" style="width:100%;">
+                                            <span class="btn-border"></span>
+                                            <span class="btn-text" style="font-size:0.75rem;"><i data-lucide="log-in"></i> SIGN IN WITH GOOGLE</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="generator-body-inner" style="height:100%; display:flex; flex-direction:column; gap:12px; padding:15px; box-sizing:border-box; overflow-y:auto;">
+                                <div class="prompt-area" style="display:flex; flex-direction:column; gap:6px;">
+                                    <label for="tb-synth-prompt" style="font-family:'Share Tech Mono'; font-size:0.75rem; color:var(--text-bright);">TESTBENCH STIMULUS SPECIFICATIONS:</label>
+                                    <textarea id="tb-synth-prompt" placeholder="Describe testbench stimulus timing sequence..." style="background:#020503; color:#a1bca8; border:1px solid var(--panel-border); font-family:'JetBrains Mono'; font-size:0.75rem; outline:none; padding:8px; resize:none; height:80px;"></textarea>
+                                </div>
+                                <div class="prompt-quick-chips" style="display:flex; flex-wrap:wrap; gap:5px;">
+                                    <span class="tb-quick-chip" data-prompt="Generate clock source and reset pulse with random input stimulus.">Clock & Reset</span>
+                                    <span class="tb-quick-chip" data-prompt="Generate clock generator and exhaustive inputs testing all combinations.">Exhaustive Test</span>
+                                    <span class="tb-quick-chip" data-prompt="Generate step-by-step sequence driver verifying logic outputs.">Sequence Driver</span>
+                                </div>
+                                <div class="synth-actions">
+                                    <button class="glowing-btn" id="tb-generate-btn" style="width:100%;">
+                                        <span class="btn-border"></span>
+                                        <span class="btn-text"><i data-lucide="wand2"></i> GENERATE TESTBENCH CODE</span>
+                                    </button>
+                                </div>
+                                
+                                <div class="generator-terminal-wrapper" style="flex:1; min-height:80px;">
+                                    <div class="generator-terminal" id="tb-terminal-log" style="height:100%; background:#020503; border:1px solid var(--panel-border); padding:8px; overflow-y:auto; font-family:'Share Tech Mono'; font-size:0.75rem;">
+                                        <div class="term-line opacity-50">Awaiting testbench parameters...</div>
+                                    </div>
+                                </div>
+
+                                <div class="synth-result-container" id="tb-result-box" style="display: none; flex-direction:column; gap:6px;">
+                                    <div class="result-header" style="display:flex; justify-content:space-between; align-items:center;">
+                                        <span style="font-family:'Orbitron'; font-size:0.7rem; color:var(--neon-cyan);">SYNTHESIZED TESTBENCH</span>
+                                        <button id="inject-tb-btn" class="hud-btn highlight"><i data-lucide="corner-down-left"></i> INJECT</button>
+                                    </div>
+                                    <pre class="synthesized-pre" style="margin:0; border:1px solid var(--panel-border); background:#020503; padding:8px; overflow:auto; max-height:120px;"><code id="tb-synthesized-code-box" style="font-family:'JetBrains Mono'; font-size:0.75rem; color:#00ff66;"></code></pre>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="panel-body simulation-body">
-                    
-                    <!-- Simulation Controller Hub -->
-                    <div class="sim-controls-hud">
-                        <div class="sim-hud-row">
-                            <button class="hud-btn" id="sim-run-btn" title="Run Continuous Simulation"><i data-lucide="play"></i> AUTO-RUN</button>
-                            <button class="hud-btn" id="sim-step-btn" title="Tick Clock Cycles Single Step"><i data-lucide="skip-forward"></i> STEP CLK</button>
-                            <button class="hud-btn" id="sim-reset-btn" title="Reset Simulation Timeline"><i data-lucide="rotate-ccw"></i> RESET SIM</button>
-                            <div class="hud-divider"></div>
-                            <div class="hud-slider-group">
-                                <label for="sim-speed-slider">CLOCK SPEED: <span id="speed-val">1Hz</span></label>
-                                <input type="range" id="sim-speed-slider" min="1" max="10" value="2">
-                            </div>
-                            <div class="hud-divider"></div>
-                            <div class="hud-info-display">
-                                <span class="label">CYCLE:</span>
-                                <span class="value" id="clock-cycle-counter">000</span>
-                            </div>
-                        </div>
 
-                        <!-- Stimulus Board: dynamic toggling of input variables -->
-                        <div class="stimulus-dashboard">
-                            <div class="stim-title">HARDWARE PORT STIMULUS:</div>
-                            <div class="stim-controls-grid" id="stimulus-grid">
-                                <!-- Populated dynamically from ports e.g. a=0, b=0, clk=0, rst=0 -->
-                                <div class="stim-empty">No active ports. Load / compile a module to interface pins.</div>
+                <!-- Last part: Run Button -->
+                <div class="window-footer-actions" style="background:#040905; border-top:1px solid var(--panel-border); padding:15px; display:flex; justify-content:space-between; align-items:center; gap:20px;">
+                    <div style="display:flex; align-items:center; gap:15px;">
+                        <span class="footer-status" id="tb-status-badge"><span class="led green"></span> READY FOR VERIFICATION</span>
+                        <button class="panel-btn" id="tb-lint-btn"><i data-lucide="check-square"></i> LINT TESTBENCH</button>
+                    </div>
+                    <button class="glowing-btn highlight" id="tb-sim-run-btn" style="width:250px;">
+                        <span class="btn-border" style="border-color:var(--neon-cyan);"></span>
+                        <span class="btn-text"><i data-lucide="play"></i> RUN SIMULATION</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- WINDOW 4: LOGIC ANALYZER & SIMULATOR RESULTS -->
+            <section class="window-viewport" id="window-simulator" style="display:none; flex-direction:column; height:100%; width:100%; overflow:hidden;">
+                <div class="window-core-content" style="display:flex; flex:1; min-height:0; width:100%; border-bottom:2px solid var(--panel-border);">
+                    <!-- Part 1: Waveforms -->
+                    <div class="panel results-wave-panel" style="flex:1.2; border-right:2px solid var(--panel-border); display:flex; flex-direction:column; overflow:hidden;">
+                        <div class="panel-header">
+                            <div class="panel-title"><i data-lucide="trending-up"></i> WAVEFORM LOGGER</div>
+                        </div>
+                        <div class="panel-body" style="flex:1; min-height:0; position:relative; background:#020503;">
+                            <div class="waveform-container" style="height:100%; width:100%;">
+                                <canvas id="waveform-canvas"></canvas>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Output Screens depending on Active Tab -->
-                    <!-- TAB 1: Timing Diagram Waveform Canvas -->
-                    <div class="sim-screen active" id="sim-screen-wave">
-                        <div class="waveform-container">
-                            <canvas id="waveform-canvas"></canvas>
+                    <!-- Part 2: Schematic -->
+                    <div class="panel results-schematic-panel" style="flex:1; border-right:2px solid var(--panel-border); display:flex; flex-direction:column; overflow:hidden;">
+                        <div class="panel-header">
+                            <div class="panel-title"><i data-lucide="network"></i> SCHEMATIC VIEWER</div>
                         </div>
-                    </div>
-
-                    <!-- TAB 2: Schematic Circuit Diagram -->
-                    <div class="sim-screen" id="sim-screen-schematic">
-                        <div class="schematic-container">
-                            <!-- Overlay instructions -->
-                            <div class="schematic-tip"><i data-lucide="info"></i> Interactive Logic Nodes. Green lines = High Logic (1), Gray = Low (0).</div>
-                            <div class="schematic-canvas-wrapper">
+                        <div class="panel-body" style="flex:1; min-height:0; background:#020503; padding:10px; box-sizing:border-box;">
+                            <div class="schematic-tip" style="font-family:'Share Tech Mono'; font-size:0.7rem; color:var(--text-muted); margin-bottom:8px;"><i data-lucide="info"></i> Green = High Logic (1), Gray = Low (0).</div>
+                            <div style="height:calc(100% - 20px); width:100%;">
                                 <canvas id="schematic-canvas"></canvas>
                             </div>
                         </div>
                     </div>
 
-                    <!-- TAB 3: Simulation Output Console Log -->
-                    <div class="sim-screen" id="sim-screen-console">
-                        <div class="sim-log-terminal" id="sim-log-output">
-                            <div class="term-line opacity-50">Simulation core loaded. Ready to trace module execution.</div>
+                    <!-- Part 3: Console Logs & Manual Stimulus Board -->
+                    <div class="panel results-controls-panel" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+                        <div class="panel-header">
+                            <div class="panel-title"><i data-lucide="sliders"></i> SIM INPUTS & LOGS</div>
+                            <div class="panel-actions">
+                                <div class="sim-view-tabs">
+                                    <button class="sim-tab active" id="sim-tab-console"><i data-lucide="terminal"></i> TRACE LOG</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel-body" style="flex:1; min-height:0; display:flex; flex-direction:column; background:#020503;">
+                            <!-- Manual Stimulus Dashboard -->
+                            <div class="stimulus-dashboard" style="position:relative; background:#040905; border-bottom:1px solid var(--panel-border); padding:12px; box-sizing:border-box;">
+                                <div class="stim-title" style="font-family:'Orbitron'; font-size:0.75rem; font-weight:700; color:var(--text-bright); margin-bottom:8px;">HARDWARE PORT STIMULUS:</div>
+                                <div class="stim-controls-grid" id="stimulus-grid" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:6px; max-height:100px; overflow-y:auto; padding:2px;">
+                                    <div class="stim-empty" style="font-size:0.7rem; color:var(--text-muted);">No active inputs.</div>
+                                </div>
+                                <!-- Disabled overlay cover for Testbench mode -->
+                                <div id="stimulus-overlay-cover" style="display:none; position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(2,5,3,0.92); z-index:10; align-items:center; justify-content:center; border:1px solid var(--panel-border);">
+                                    <span style="color:var(--neon-cyan); font-family:'Orbitron',sans-serif; font-size:0.75rem; font-weight:700; text-shadow:0 0 5px var(--neon-cyan-glow);"><i data-lucide="lock" style="vertical-align:middle; margin-right:4px; height:12px; width:12px;"></i> INPUT DRIVEN BY TESTBENCH</span>
+                                </div>
+                            </div>
+
+                            <!-- Simulator Console Trace Logs -->
+                            <div class="sim-log-terminal" id="sim-log-output" style="flex:1; min-height:0; padding:10px; overflow-y:auto; font-family:'Share Tech Mono'; font-size:0.75rem; box-sizing:border-box;">
+                                <div class="term-line opacity-50">Simulation timeline initialized. Ready for stimulus events.</div>
+                            </div>
                         </div>
                     </div>
-
                 </div>
-                <div class="panel-footer">
-                    <span class="footer-status" id="sim-status-footer">CYCLE TICK LIMIT: 1000 // TIME SCALE: 10ns</span>
+
+                <!-- Last part: Run Simulation Actions & Back Button -->
+                <div class="window-footer-actions" style="background:#040905; border-top:1px solid var(--panel-border); padding:15px; display:flex; justify-content:space-between; align-items:center; gap:20px;">
+                    <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
+                        <button class="hud-btn" id="sim-run-btn" title="Run Continuous Simulation"><i data-lucide="play"></i> AUTO-RUN</button>
+                        <button class="hud-btn" id="sim-step-btn" title="Tick Clock Cycles Single Step"><i data-lucide="skip-forward"></i> STEP CLK</button>
+                        <button class="hud-btn" id="sim-reset-btn" title="Reset Simulation Timeline"><i data-lucide="rotate-ccw"></i> RESET SIM</button>
+                        <div class="hud-divider"></div>
+                        <div class="hud-select-group" style="display:flex; align-items:center; gap:6px;">
+                            <span class="label" style="font-family:'Share Tech Mono'; font-size:0.75rem; color:var(--text-muted);">DRIVE:</span>
+                            <select id="stimulus-source-select" class="hud-select" style="background:#020503; color:#00e5ff; border:1px solid #142a1b; outline:none; font-family:'Share Tech Mono'; padding:2px 6px; font-size:0.75rem;">
+                                <option value="manual">MANUAL BOARD</option>
+                                <option value="testbench">TESTBENCH DRIVER</option>
+                            </select>
+                        </div>
+                        <div class="hud-divider"></div>
+                        <div class="hud-slider-group">
+                            <label for="sim-speed-slider">CLK: <span id="speed-val">1Hz</span></label>
+                            <input type="range" id="sim-speed-slider" min="1" max="10" value="2" style="width:60px;">
+                        </div>
+                        <div class="hud-divider"></div>
+                        <div class="hud-info-display">
+                            <span class="label">CYCLE:</span>
+                            <span class="value" id="clock-cycle-counter">000</span>
+                        </div>
+                    </div>
+                    <button class="glowing-btn highlight" id="results-back-btn" style="width:200px;">
+                        <span class="btn-border" style="border-color:var(--neon-amber);"></span>
+                        <span class="btn-text"><i data-lucide="arrow-left"></i> BACK TO EDITORS</span>
+                    </button>
                 </div>
             </section>
         </main>
     </div>
 
     <!-- Audio Beeps Synthesized via Web Audio API -->
-    <script src="hdl_parser.js?v=1.0.8"></script>
-    <script src="waveform_viewer.js?v=1.0.8"></script>
-    <script src="schematic_viewer.js?v=1.0.8"></script>
-    <script src="app.js?v=1.0.8"></script>
+    <script src="hdl_parser.js?v=1.0.10"></script>
+    <script src="waveform_viewer.js?v=1.0.10"></script>
+    <script src="schematic_viewer.js?v=1.0.10"></script>
+    <script src="app.js?v=1.0.10"></script>
 </body>
 </html>

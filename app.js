@@ -89,7 +89,8 @@ module shift_register(
         else
             q <= {q[2:0], sin};
     end
-endmodule`
+endmodule`,
+        new_project: ""
     },
     vhdl: {
         and_gate: `-- Combinational Logic: VHDL Gates
@@ -232,7 +233,8 @@ begin
         end if;
     end process;
     q <= r_reg;
-end architecture behavioral;`
+end architecture behavioral;`,
+        new_project: ""
     }
 };
 
@@ -263,6 +265,7 @@ let isSimRunning = false;
 let clockCycle = 0;
 let clkPulseHigh = false; // Tracks clock pulse status for auto-run toggle
 let simLogElement = null;
+let activeTestbenchQueue = [];
 
 // Audio Configuration
 let isAudioOn = true;
@@ -336,27 +339,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
     lucide.createIcons();
 
-
-
     // Sync Textarea scroll with line numbers
     const codeArea = document.getElementById('code-input');
     const lineNums = document.getElementById('editor-line-numbers');
+    const overlay = document.getElementById('code-overlay');
+    
     codeArea.addEventListener('scroll', () => {
         lineNums.scrollTop = codeArea.scrollTop;
+        if (overlay) {
+            overlay.scrollTop = codeArea.scrollTop;
+            overlay.scrollLeft = codeArea.scrollLeft;
+        }
     });
 
     codeArea.addEventListener('input', () => {
         updateLineNumbers();
+        runHDLCompilation();
     });
 
-    // Wire HUD Navigation
-    document.getElementById('hud-home-btn').addEventListener('click', () => {
-        playBeep('click');
-        switchScreen('boot-screen');
-    });
-
+    // Reboot / Hard Reset handler
     document.getElementById('reboot-system-btn').addEventListener('click', () => {
-        playBeep('error');
+        playBeep('success');
+        
         // Clear editor code
         const codeInput = document.getElementById('code-input');
         codeInput.value = "";
@@ -373,77 +377,82 @@ document.addEventListener("DOMContentLoaded", () => {
         // Focus code input and set cursor position to the very beginning (line 1)
         codeInput.focus();
         codeInput.setSelectionRange(0, 0);
+
+        // Also clear testbench
+        const tbInput = document.getElementById('testbench-input');
+        if (tbInput) {
+            tbInput.value = "";
+            updateTbLineNumbers();
+        }
+        runTbCompilation();
+
+        // Redirect back to Window 1
+        switchWindow('window-auth-entry');
     });
 
-    // Wire Card Selectors
+    // Wire Card Selectors (Window 1 Entry and Sidebar)
     const cards = document.querySelectorAll('.selector-card');
     cards.forEach(card => {
         card.addEventListener('click', () => {
+            if (!currentUser) {
+                alert("Identity verification required. Please sign in with Google to select languages.");
+                return;
+            }
             playBeep('click');
-            cards.forEach(c => c.classList.remove('active'));
-            card.classList.add('active');
-            currentLanguage = card.dataset.hdl;
+            const hdl = card.dataset.hdl;
+            document.querySelectorAll('.selector-card').forEach(c => {
+                if (c.dataset.hdl === hdl) {
+                    c.classList.add('active');
+                } else {
+                    c.classList.remove('active');
+                }
+            });
+            currentLanguage = hdl;
             loadActiveTemplate();
+            
+            // Update active core displays
+            const footerStatus = document.getElementById('lang-footer-status');
+            if (footerStatus) footerStatus.innerText = `ACTIVE CORE: ${hdl.toUpperCase()}`;
+            
+            const tbFilename = document.getElementById('tb-filename');
+            if (tbFilename) tbFilename.innerText = hdl === 'vhdl' ? 'tb_main.vhd' : 'tb_main.v';
+
+            // Clear testbench on language shift
+            const tbInput = document.getElementById('testbench-input');
+            if (tbInput) {
+                tbInput.value = "";
+                updateTbLineNumbers();
+            }
+
+            runHDLCompilation();
+            runTbCompilation();
+
+            // Transition to Window 2 immediately on language click
+            switchWindow('window-hdl-dev');
         });
     });
 
-    // Wire Template Chips
+    // Wire Template Chips & Board Presets
     const chips = document.querySelectorAll('.template-chip');
     chips.forEach(chip => {
         chip.addEventListener('click', () => {
+            if (!currentUser) {
+                alert("Identity verification required. Please sign in with Google.");
+                return;
+            }
             playBeep('click');
             chips.forEach(c => c.classList.remove('active'));
             chip.classList.add('active');
             currentTemplate = chip.dataset.template;
             loadActiveTemplate();
+            runHDLCompilation();
         });
     });
 
-    // Boot Command Trigger
-    document.getElementById('initialize-core-btn').addEventListener('click', () => {
-        playBeep('success');
-        
-        // Show simulated booting diagnostics
-        const terminal = document.querySelector('.diagnostic-terminal');
-        terminal.innerHTML = "";
-        
-        const lines = [
-            `> LOADING CORRESPONDING ARCHITECTURE STACKS...`,
-            `> COMPILING INTEGRATED GATE LIBRARIES...`,
-            `> CHIP INITIALIZATION COMPLETING IN T-MINUS 1S...`,
-            `> STACK LOADED. LAUNCHING WORKSPACE CORE CONSOLE...`
-        ];
-
-        let index = 0;
-        const interval = setInterval(() => {
-            if (index < lines.length) {
-                const p = document.createElement('div');
-                p.className = 'term-line glow-green';
-                p.innerText = lines[index++];
-                terminal.appendChild(p);
-            } else {
-                clearInterval(interval);
-                switchScreen('workspace-screen');
-                // Run initial compile
-                runHDLCompilation();
-            }
-        }, 300);
-    });
-
-    // Compiler Action
+    // Compiler Action (Window 2 -> Window 3 compile step)
     document.getElementById('editor-compile-btn').addEventListener('click', () => {
         playBeep('click');
         runHDLCompilation();
-    });
-
-    // Diagnostics Tabs Toggles
-    document.getElementById('tab-errors').addEventListener('click', () => {
-        playBeep('click');
-        toggleDiagTab('errors');
-    });
-    document.getElementById('tab-autocorrect').addEventListener('click', () => {
-        playBeep('click');
-        toggleDiagTab('autocorrect');
     });
 
     // Apply auto-correct patch
@@ -452,39 +461,66 @@ document.addEventListener("DOMContentLoaded", () => {
         applyDiagnosticsPatch();
     });
 
-    // Synthesizer Quick prompts
-    const quickChips = document.querySelectorAll('.quick-chip');
-    quickChips.forEach(chip => {
-        chip.addEventListener('click', () => {
-            playBeep('click');
-            document.getElementById('synth-prompt').value = chip.dataset.prompt;
+    // Testbench Editor Scrolling & Input Changes
+    const tbInput = document.getElementById('testbench-input');
+    const tbLineNums = document.getElementById('tb-line-numbers');
+    const tbOverlay = document.getElementById('tb-overlay');
+    if (tbInput && tbLineNums) {
+        tbInput.addEventListener('scroll', () => {
+            tbLineNums.scrollTop = tbInput.scrollTop;
+            if (tbOverlay) {
+                tbOverlay.scrollTop = tbInput.scrollTop;
+                tbOverlay.scrollLeft = tbInput.scrollLeft;
+            }
         });
-    });
+        tbInput.addEventListener('input', () => {
+            updateTbLineNumbers();
+            runTbCompilation();
+        });
+    }
 
-    // Neural synthesis trigger
-    document.getElementById('generate-code-btn').addEventListener('click', () => {
+    // Neural Coprocessor Action Buttons
+    const generateCodeBtn = document.getElementById('generate-code-btn');
+    if (generateCodeBtn) {
+        generateCodeBtn.addEventListener('click', () => {
+            playBeep('click');
+            triggerNeuralSynthesis();
+        });
+    }
+
+    const injectEditorBtn = document.getElementById('inject-editor-btn');
+    if (injectEditorBtn) {
+        injectEditorBtn.addEventListener('click', () => {
+            playBeep('success');
+            injectSynthesizedCode();
+        });
+    }
+
+    // Testbench Inject Button
+    const injectTbBtn = document.getElementById('inject-tb-btn');
+    if (injectTbBtn) {
+        injectTbBtn.addEventListener('click', () => {
+            playBeep('success');
+            injectSynthesizedTestbench();
+        });
+    }
+
+    // Testbench Action Buttons
+    document.getElementById('tb-generate-btn').addEventListener('click', () => {
         playBeep('click');
-        triggerNeuralSynthesis();
+        triggerTestbenchSynthesis();
     });
 
-    // Inject generated code
-    document.getElementById('inject-editor-btn').addEventListener('click', () => {
-        playBeep('success');
-        injectSynthesizedCode();
-    });
-
-    // Copy to clipboard
-    document.getElementById('editor-copy-btn').addEventListener('click', () => {
+    // Testbench Copy & Download
+    document.getElementById('tb-copy-btn').addEventListener('click', () => {
         playBeep('click');
-        navigator.clipboard.writeText(codeArea.value);
+        navigator.clipboard.writeText(document.getElementById('testbench-input').value);
         showTemporaryBadge('COPIED!');
     });
-
-    // Download File
-    document.getElementById('editor-download-btn').addEventListener('click', () => {
+    document.getElementById('tb-download-btn').addEventListener('click', () => {
         playBeep('success');
-        const code = document.getElementById('code-input').value;
-        const filename = document.getElementById('current-filename').innerText;
+        const code = document.getElementById('testbench-input').value;
+        const filename = document.getElementById('tb-filename').innerText;
         const blob = new Blob([code], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -496,34 +532,49 @@ document.addEventListener("DOMContentLoaded", () => {
         URL.revokeObjectURL(url);
     });
 
-    // Simulation Controls
-    document.getElementById('sim-run-btn').addEventListener('click', () => {
-        playBeep('click');
-        toggleSimulationRun();
-    });
+    // Testbench Simulation Runner (Window 3 -> Window 4 simulation step)
+    const tbSimRunBtn = document.getElementById('tb-sim-run-btn');
+    if (tbSimRunBtn) {
+        tbSimRunBtn.addEventListener('click', () => {
+            playBeep('success');
+            runTestbenchSimulation();
+        });
+    }
 
-    document.getElementById('sim-step-btn').addEventListener('click', () => {
-        playBeep('click');
-        stepClockPulseManual();
-    });
+    // Results back button (Window 4 -> Window 3 navigation)
+    const resultsBackBtn = document.getElementById('results-back-btn');
+    if (resultsBackBtn) {
+        resultsBackBtn.addEventListener('click', () => {
+            playBeep('click');
+            switchWindow('window-tb-dev');
+        });
+    }
 
-    document.getElementById('sim-reset-btn').addEventListener('click', () => {
-        playBeep('click');
-        resetSimulationEngine();
-    });
+    // Entry Wizard gateway Enter button
+    const enterBtn = document.getElementById('gateway-enter-btn');
+    if (enterBtn) {
+        enterBtn.addEventListener('click', () => {
+            if (!currentUser) {
+                alert("Identity verification required. Please sign in with Google.");
+                return;
+            }
+            playBeep('success');
+            switchWindow('window-hdl-dev');
+        });
+    }
 
-    // Sim display tabs
-    document.getElementById('sim-tab-wave').addEventListener('click', () => {
-        playBeep('click');
-        toggleSimScreen('wave');
-    });
-    document.getElementById('sim-tab-schematic').addEventListener('click', () => {
-        playBeep('click');
-        toggleSimScreen('schematic');
-    });
-    document.getElementById('sim-tab-console').addEventListener('click', () => {
-        playBeep('click');
-        toggleSimScreen('console');
+    // Wizard Breadcrumb navigation listeners
+    const steps = ['step-nav-entry', 'step-nav-hdl', 'step-nav-tb', 'step-nav-sim'];
+    steps.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('click', () => {
+                if (el.classList.contains('completed') || el.classList.contains('active')) {
+                    playBeep('click');
+                    switchWindow(el.dataset.window);
+                }
+            });
+        }
     });
 
     // Audio HUD toggler
@@ -553,15 +604,56 @@ document.addEventListener("DOMContentLoaded", () => {
     initAuth();
 });
 
-function switchScreen(screenId) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById(screenId).classList.add('active');
+let currentActiveWindow = 'window-auth-entry';
+
+function switchWindow(windowId) {
+    currentActiveWindow = windowId;
     
-    if (screenId === 'workspace-screen') {
+    // Hide/show viewports
+    document.querySelectorAll('.window-viewport').forEach(w => {
+        w.classList.remove('active');
+    });
+    const target = document.getElementById(windowId);
+    if (target) {
+        target.classList.add('active');
+    }
+    
+    // Resize canvasses on screen load
+    if (windowId === 'window-simulator') {
         setTimeout(() => {
-            waveViewer.resize();
-            schematicViewer.resize();
-        }, 100);
+            if (waveViewer) waveViewer.resize();
+            if (schematicViewer) schematicViewer.resize();
+        }, 80);
+    }
+
+    // Update nav indicators
+    const steps = [
+        { id: 'step-nav-entry', win: 'window-auth-entry' },
+        { id: 'step-nav-hdl', win: 'window-hdl-dev' },
+        { id: 'step-nav-tb', win: 'window-tb-dev' },
+        { id: 'step-nav-sim', win: 'window-simulator' }
+    ];
+
+    let foundActive = false;
+    steps.forEach((s) => {
+        const el = document.getElementById(s.id);
+        if (!el) return;
+
+        if (s.win === windowId) {
+            el.className = 'nav-step active';
+            foundActive = true;
+        } else if (!foundActive) {
+            // Steps before the active step are completed & clickable
+            el.className = 'nav-step completed';
+        } else {
+            // Steps after active step are disabled
+            el.className = 'nav-step disabled';
+        }
+    });
+    
+    // Trigger Lucide refresh
+    if (window.lucide) {
+        lucide.createIcons();
     }
 }
 
@@ -588,10 +680,16 @@ function updateLineNumbers() {
 function loadActiveTemplate() {
     const codeArea = document.getElementById('code-input');
     const template = HDL_TEMPLATES[currentLanguage]?.[currentTemplate] || "";
-    codeArea.value = template;
+    if (codeArea) codeArea.value = template;
     
-    document.getElementById('current-filename').innerText = currentLanguage === 'vhdl' ? 'main.vhd' : 'main.v';
-    document.getElementById('current-hdl-label').innerText = currentLanguage.toUpperCase();
+    const filenameEl = document.getElementById('current-filename');
+    if (filenameEl) {
+        filenameEl.innerText = currentLanguage === 'vhdl' ? 'main.vhd' : 'main.v';
+    }
+    const hdlLabelEl = document.getElementById('current-hdl-label');
+    if (hdlLabelEl) {
+        hdlLabelEl.innerText = currentLanguage.toUpperCase();
+    }
     
     updateLineNumbers();
 }
@@ -646,8 +744,10 @@ function runHDLCompilation() {
         playBeep('error');
         // Compiler status lights
         badge.innerHTML = `<span class="led red"></span> LINT FAILED`;
-        summaryBadge.className = 'status-indicator red';
-        summaryBadge.innerText = 'SYNTAX DEFECTS DETECTED';
+        if (summaryBadge) {
+            summaryBadge.className = 'status-indicator red';
+            summaryBadge.innerText = 'SYNTAX DEFECTS DETECTED';
+        }
         
         // Show error list
         populateDiagnosticsList(report.errors);
@@ -660,8 +760,10 @@ function runHDLCompilation() {
     } else {
         playBeep('success');
         badge.innerHTML = `<span class="led green"></span> COMPILED`;
-        summaryBadge.className = 'status-indicator green';
-        summaryBadge.innerText = 'MODULE STABLE';
+        if (summaryBadge) {
+            summaryBadge.className = 'status-indicator green';
+            summaryBadge.innerText = 'MODULE STABLE';
+        }
 
         populateDiagnosticsList([]); // success screen
         setupProposedPatch(code, code);
@@ -670,19 +772,27 @@ function runHDLCompilation() {
         if (currentLanguage === 'verilog' || currentLanguage === 'sysverilog' || currentLanguage === 'vhdl') {
             setupSimulationFromCompilation(report);
         }
+
+        // Auto-navigate to Testbench lab window after successful compilation
+        setTimeout(() => {
+            switchWindow('window-tb-dev');
+        }, 650);
     }
 }
 
 function toggleDiagTab(tab) {
-    document.querySelectorAll('.diag-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.hdl-tab-btn').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.hdl-tab-content').forEach(c => c.classList.remove('active'));
     
     if (tab === 'errors') {
         document.getElementById('tab-errors').classList.add('active');
         document.getElementById('content-errors').classList.add('active');
-    } else {
+    } else if (tab === 'autocorrect') {
         document.getElementById('tab-autocorrect').classList.add('active');
         document.getElementById('content-autocorrect').classList.add('active');
+    } else if (tab === 'generator') {
+        document.getElementById('tab-generator').classList.add('active');
+        document.getElementById('content-generator').classList.add('active');
     }
 }
 
@@ -1103,6 +1213,9 @@ function resetSimulationEngine() {
     clockCycle = 0;
     document.getElementById('clock-cycle-counter').innerText = "000";
 
+    // Clear active testbench queue
+    activeTestbenchQueue = [];
+
     // Setup initial simulator states
     simState = parser.createSimulatorState();
     
@@ -1113,7 +1226,7 @@ function resetSimulationEngine() {
     waveViewer.updateHistory(simHistory);
     schematicViewer.updateState(simState);
 
-    simLogElement.innerHTML = `<div class="term-line opacity-50">Simulation core reset. Timeline initialized to T0.</div>`;
+    if (simLogElement) simLogElement.innerHTML = `<div class="term-line opacity-50">Simulation core reset. Timeline initialized to T0.</div>`;
     logSimulationState();
 }
 
@@ -1132,6 +1245,15 @@ function logSimulationState() {
 }
 
 function stepClockPulseManual() {
+    const isTestbenchMode = document.getElementById('stimulus-source-select')?.value === 'testbench';
+    if (isTestbenchMode) {
+        const active = applyNextTestbenchVector();
+        if (!active) {
+            alert("No remaining testbench stimulus vectors. Click reset to start timeline over.");
+            return;
+        }
+    }
+
     clockCycle++;
     document.getElementById('clock-cycle-counter').innerText = String(clockCycle).padStart(3, '0');
 
@@ -1178,6 +1300,23 @@ function toggleSimulationRun() {
         const delay = 1000 / speedVal;
 
         simInterval = setInterval(() => {
+            const isTestbenchMode = document.getElementById('stimulus-source-select')?.value === 'testbench';
+            if (isTestbenchMode) {
+                const active = applyNextTestbenchVector();
+                if (!active) {
+                    toggleSimulationRun(); // Halt
+                    const simConsole = document.getElementById('sim-log-output');
+                    if (simConsole) {
+                        const line = document.createElement('div');
+                        line.className = 'term-line glow-green';
+                        line.innerText = `[o] TESTBENCH SIMULATION COMPLETE // Cycle Ticks: ${clockCycle}`;
+                        simConsole.appendChild(line);
+                        simConsole.scrollTop = simConsole.scrollHeight;
+                    }
+                    return;
+                }
+            }
+
             playBeep('clock');
             clockCycle++;
             document.getElementById('clock-cycle-counter').innerText = String(clockCycle).padStart(3, '0');
@@ -1222,20 +1361,29 @@ document.getElementById('sim-speed-slider').addEventListener('input', (e) => {
 });
 
 function toggleSimScreen(screen) {
-    document.querySelectorAll('.sim-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.sim-screen').forEach(s => s.classList.remove('active'));
+    const tabs = document.querySelectorAll('.sim-tab');
+    if (tabs.length > 0) tabs.forEach(t => t.classList.remove('active'));
+    
+    const screens = document.querySelectorAll('.sim-screen');
+    if (screens.length > 0) screens.forEach(s => s.classList.remove('active'));
 
     if (screen === 'wave') {
-        document.getElementById('sim-tab-wave').classList.add('active');
-        document.getElementById('sim-screen-wave').classList.add('active');
-        waveViewer.resize();
+        const tab = document.getElementById('sim-tab-wave');
+        if (tab) tab.classList.add('active');
+        const scr = document.getElementById('sim-screen-wave');
+        if (scr) scr.classList.add('active');
+        if (waveViewer) waveViewer.resize();
     } else if (screen === 'schematic') {
-        document.getElementById('sim-tab-schematic').classList.add('active');
-        document.getElementById('sim-screen-schematic').classList.add('active');
-        schematicViewer.resize();
+        const tab = document.getElementById('sim-tab-schematic');
+        if (tab) tab.classList.add('active');
+        const scr = document.getElementById('sim-screen-schematic');
+        if (scr) scr.classList.add('active');
+        if (schematicViewer) schematicViewer.resize();
     } else {
-        document.getElementById('sim-tab-console').classList.add('active');
-        document.getElementById('sim-screen-console').classList.add('active');
+        const tab = document.getElementById('sim-tab-console');
+        if (tab) tab.classList.add('active');
+        const scr = document.getElementById('sim-screen-console');
+        if (scr) scr.classList.add('active');
     }
 }
 
@@ -1293,7 +1441,7 @@ function initAuth() {
         const wasGuest = !currentUser;
         updateUserAuthUI(session ? session.user : null);
         if (session && session.user && wasGuest) {
-            switchScreen('workspace-screen');
+            switchWindow('window-hdl-dev');
             runHDLCompilation();
         }
     });
@@ -1302,7 +1450,7 @@ function initAuth() {
     supabaseClient.auth.getSession().then(({ data: { session } }) => {
         updateUserAuthUI(session ? session.user : null);
         if (session && session.user) {
-            switchScreen('workspace-screen');
+            switchWindow('window-hdl-dev');
             runHDLCompilation();
         }
     });
@@ -1334,90 +1482,215 @@ async function handleSignOut() {
 
 function updateUserAuthUI(user) {
     currentUser = user;
+    
+    // Header components
     const led = document.getElementById('auth-status-led');
     const label = document.getElementById('auth-status-label');
     const actionBtn = document.getElementById('auth-action-btn');
-    const overlay = document.getElementById('synth-lock-overlay');
-    const lockTitle = document.getElementById('lock-title');
-    const lockDesc = document.getElementById('lock-desc');
-    const actionsContainer = document.getElementById('lock-actions-container');
+
+    // Sidebar components
+    const sidebarLed = document.getElementById('sidebar-auth-status-led');
+    const sidebarLabel = document.getElementById('sidebar-auth-status-label');
+    const sidebarContainer = document.getElementById('sidebar-lock-actions-container');
+
+    // Lock overlays
+    const hdlOverlay = document.getElementById('synth-lock-overlay');
+    const tbOverlay = document.getElementById('tb-synth-lock-overlay');
+
+    // Gateway views in Window 1 (Dynamic Sign-In vs Compiler Presets)
+    const gatewayLocked = document.getElementById('gateway-auth-locked-view');
+    const gatewayControls = document.getElementById('gateway-auth-unlocked-view');
+    const gatewayEmail = document.getElementById('gateway-user-email');
 
     if (user) {
-        // Logged-in authenticated
+        const displayLabel = user.email.split('@')[0].toUpperCase();
+        
+        // Show unlocked settings controls in Window 1
+        if (gatewayLocked) gatewayLocked.style.display = 'none';
+        if (gatewayControls) gatewayControls.style.display = 'flex';
+        if (gatewayEmail) gatewayEmail.innerText = user.email.toUpperCase();
+
+        // Update header profiles
         if (led) led.className = 'led green';
-        const displayLabel = user.email.split('@')[0];
-        if (label) label.innerText = displayLabel.toUpperCase();
+        if (label) label.innerText = displayLabel;
         if (actionBtn) actionBtn.innerHTML = `<i data-lucide="log-out"></i> SIGN OUT`;
+
+        // Update sidebar profiles
+        if (sidebarLed) sidebarLed.className = 'led green';
+        if (sidebarLabel) sidebarLabel.innerText = displayLabel;
+        if (sidebarContainer) {
+            sidebarContainer.innerHTML = `
+                <button class="glowing-btn highlight" id="sidebar-auth-action-btn" style="width:100%;">
+                    <span class="btn-border" style="border-color:var(--neon-red);"></span>
+                    <span class="btn-text" style="font-size:0.75rem;"><i data-lucide="log-out"></i> SIGN OUT</span>
+                </button>
+            `;
+            const sBtn = document.getElementById('sidebar-auth-action-btn');
+            if (sBtn) {
+                sBtn.addEventListener('click', () => {
+                    playBeep('click');
+                    handleSignOut();
+                });
+            }
+        }
+
+        // Wire Gateway Sign-Out
+        const gatewaySignOutBtn = document.getElementById('gateway-signout-btn');
+        if (gatewaySignOutBtn) {
+            gatewaySignOutBtn.addEventListener('click', () => {
+                playBeep('click');
+                handleSignOut();
+            });
+        }
 
         // Retrieve subscription tier
         isGeminiSubscribed = user.user_metadata?.gemini_subscribed === true;
 
         if (isGeminiSubscribed) {
-            if (overlay) overlay.style.display = 'none'; // Unlocks AI synthesizers
+            if (hdlOverlay) hdlOverlay.style.display = 'none';
+            if (tbOverlay) tbOverlay.style.display = 'none';
         } else {
-            // Under verification or needs subscription
-            if (overlay) overlay.style.display = 'flex';
-            if (lockTitle) lockTitle.innerText = "GEMINI ADVANCED SUBSCRIPTION REQUISITE";
-            if (lockDesc) lockDesc.innerText = "Your account is logged in, but you do not have an active Google Gemini subscription associated. Please activate your subscription state in this sandbox to test advanced AI logic generation.";
-            
-            if (actionsContainer) {
-                actionsContainer.innerHTML = `
-                    <button class="glowing-btn" id="activate-sub-btn" style="color:var(--neon-amber);">
-                        <span class="btn-border" style="border-color:var(--neon-amber);"></span>
-                        <span class="btn-text"><i data-lucide="zap"></i> ACTIVATE GEMINI SUBSCRIPTION (SANDBOX)</span>
-                    </button>
-                `;
+            // Logged in but requires subscription activation
+            if (hdlOverlay) {
+                hdlOverlay.style.display = 'flex';
+                const hdlTitle = hdlOverlay.querySelector('#lock-title');
+                const hdlDesc = hdlOverlay.querySelector('#lock-desc');
+                const hdlActions = hdlOverlay.querySelector('#lock-actions-container');
+                if (hdlTitle) hdlTitle.innerText = "SUBSCRIPTION REQUIRED";
+                if (hdlDesc) hdlDesc.innerText = "An active Google Gemini subscription is required for logic synthesis. Activate subscription in the sandbox below.";
+                if (hdlActions) {
+                    hdlActions.innerHTML = `
+                        <button class="glowing-btn" id="activate-sub-btn" style="color:var(--neon-amber); width:100%;">
+                            <span class="btn-border" style="border-color:var(--neon-amber);"></span>
+                            <span class="btn-text" style="font-size:0.75rem;"><i data-lucide="zap"></i> ACTIVATE GEMINI (SANDBOX)</span>
+                        </button>
+                    `;
+                }
             }
-            lucide.createIcons();
 
-            const actBtn = document.getElementById('activate-sub-btn');
-            if (actBtn) {
-                actBtn.addEventListener('click', async () => {
-                    playBeep('success');
-                    actBtn.disabled = true;
-                    actBtn.querySelector('.btn-text').innerText = "PROVISIONING CORE LICENSE...";
-                    
-                    try {
-                        const { error } = await supabaseClient.auth.updateUser({
-                            data: { gemini_subscribed: true }
-                        });
-                        if (error) throw error;
-                        alert("Google Gemini Subscription sandbox license activated successfully! AI synthesis cores initialized.");
-                    } catch (err) {
-                        alert(`Activation failed: ${err.message}`);
-                        actBtn.disabled = false;
-                    }
-                });
+            if (tbOverlay) {
+                tbOverlay.style.display = 'flex';
+                const tbTitle = tbOverlay.querySelector('#tb-lock-title');
+                const tbDesc = tbOverlay.querySelector('#tb-lock-desc');
+                const tbActions = tbOverlay.querySelector('#tb-lock-actions-container');
+                if (tbTitle) tbTitle.innerText = "SUBSCRIPTION REQUIRED";
+                if (tbDesc) tbDesc.innerText = "An active Google Gemini subscription is required for testbench synthesis. Activate subscription in the sandbox below.";
+                if (tbActions) {
+                    tbActions.innerHTML = `
+                        <button class="glowing-btn" id="tb-activate-sub-btn" style="color:var(--neon-amber); width:100%;">
+                            <span class="btn-border" style="border-color:var(--neon-amber);"></span>
+                            <span class="btn-text" style="font-size:0.75rem;"><i data-lucide="zap"></i> ACTIVATE GEMINI (SANDBOX)</span>
+                        </button>
+                    `;
+                }
             }
+
+            // Wire activation clicks
+            const actBtn = document.getElementById('activate-sub-btn');
+            const tbActBtn = document.getElementById('tb-activate-sub-btn');
+            const activateHandler = async (btnElement) => {
+                playBeep('success');
+                btnElement.disabled = true;
+                btnElement.querySelector('.btn-text').innerText = "PROVISIONING LICENSE...";
+                try {
+                    const { error } = await supabaseClient.auth.updateUser({
+                        data: { gemini_subscribed: true }
+                    });
+                    if (error) throw error;
+                    alert("Google Gemini Subscription sandbox license activated successfully! Coprocessors unlocked.");
+                } catch (err) {
+                    alert(`Activation failed: ${err.message}`);
+                    btnElement.disabled = false;
+                }
+            };
+
+            if (actBtn) actBtn.addEventListener('click', () => activateHandler(actBtn));
+            if (tbActBtn) tbActBtn.addEventListener('click', () => activateHandler(tbActBtn));
         }
+
     } else {
-        // Anonymous visitor
+        // Guest account - locked out
+        isGeminiSubscribed = false;
+
+        // Show locked card settings notice in Window 1
+        if (gatewayLocked) gatewayLocked.style.display = 'flex';
+        if (gatewayControls) gatewayControls.style.display = 'none';
+
+        // Update header profiles
         if (led) led.className = 'led red';
         if (label) label.innerText = 'GUEST';
         if (actionBtn) actionBtn.innerHTML = `<i data-lucide="log-in"></i> SIGN IN`;
-        
-        if (overlay) overlay.style.display = 'flex';
-        if (lockTitle) lockTitle.innerText = "COPROCESSOR INTERLOCK ACTIVE";
-        if (lockDesc) lockDesc.innerText = "Neural Logic Synthesis cores require Sign-In with Google & an active Google Gemini subscription.";
-        
-        if (actionsContainer) {
-            actionsContainer.innerHTML = `
-                <button class="glowing-btn" id="lock-signin-btn">
+
+        // Update sidebar profiles
+        if (sidebarLed) sidebarLed.className = 'led red';
+        if (sidebarLabel) sidebarLabel.innerText = 'GUEST ACCOUNT';
+        if (sidebarContainer) {
+            sidebarContainer.innerHTML = `
+                <button class="glowing-btn" id="sidebar-auth-action-btn" style="width:100%;">
                     <span class="btn-border"></span>
-                    <span class="btn-text"><i data-lucide="log-in"></i> SIGN IN WITH GOOGLE</span>
+                    <span class="btn-text" style="font-size:0.75rem;"><i data-lucide="log-in"></i> SIGN IN WITH GOOGLE</span>
                 </button>
             `;
+            const sBtn = document.getElementById('sidebar-auth-action-btn');
+            if (sBtn) {
+                sBtn.addEventListener('click', () => {
+                    playBeep('click');
+                    handleGoogleSignIn();
+                });
+            }
         }
-        lucide.createIcons();
-        const lockSBtn = document.getElementById('lock-signin-btn');
-        if (lockSBtn) {
-            lockSBtn.addEventListener('click', () => {
+
+        // Wire Gateway Sign-In
+        const gatewaySignInBtn = document.getElementById('gateway-auth-signin-btn');
+        if (gatewaySignInBtn) {
+            gatewaySignInBtn.addEventListener('click', () => {
                 playBeep('click');
                 handleGoogleSignIn();
             });
         }
+
+        // Show lock screens on both AI panels
+        if (hdlOverlay) {
+            hdlOverlay.style.display = 'flex';
+            const hdlTitle = hdlOverlay.querySelector('#lock-title');
+            const hdlDesc = hdlOverlay.querySelector('#lock-desc');
+            const hdlActions = hdlOverlay.querySelector('#lock-actions-container');
+            if (hdlTitle) hdlTitle.innerText = "COPROCESSOR INTERLOCK ACTIVE";
+            if (hdlDesc) hdlDesc.innerText = "Neural Logic Synthesis cores require Sign-In with Google & an active Google Gemini subscription.";
+            if (hdlActions) {
+                hdlActions.innerHTML = `
+                    <button class="glowing-btn" id="lock-signin-btn" style="width:100%;">
+                        <span class="btn-border"></span>
+                        <span class="btn-text" style="font-size:0.75rem;"><i data-lucide="log-in"></i> SIGN IN WITH GOOGLE</span>
+                    </button>
+                `;
+            }
+            const signBtn = document.getElementById('lock-signin-btn');
+            if (signBtn) signBtn.addEventListener('click', () => { playBeep('click'); handleGoogleSignIn(); });
+        }
+
+        if (tbOverlay) {
+            tbOverlay.style.display = 'flex';
+            const tbTitle = tbOverlay.querySelector('#tb-lock-title');
+            const tbDesc = tbOverlay.querySelector('#tb-lock-desc');
+            const tbActions = tbOverlay.querySelector('#tb-lock-actions-container');
+            if (tbTitle) tbTitle.innerText = "COPROCESSOR INTERLOCK ACTIVE";
+            if (tbDesc) tbDesc.innerText = "Testbench AI Synthesis cores require Sign-In with Google & an active Google Gemini subscription.";
+            if (tbActions) {
+                tbActions.innerHTML = `
+                    <button class="glowing-btn" id="tb-lock-signin-btn" style="width:100%;">
+                        <span class="btn-border"></span>
+                        <span class="btn-text" style="font-size:0.75rem;"><i data-lucide="log-in"></i> SIGN IN WITH GOOGLE</span>
+                    </button>
+                `;
+            }
+            const tbSignBtn = document.getElementById('tb-lock-signin-btn');
+            if (tbSignBtn) tbSignBtn.addEventListener('click', () => { playBeep('click'); handleGoogleSignIn(); });
+        }
+
+        // Force viewport back to entry portal if user logs out
+        switchWindow('window-auth-entry');
     }
-    lucide.createIcons();
 }
 
 async function runActualGeminiAISynthesis(prompt, apiKey, consoleLog) {
@@ -1508,4 +1781,436 @@ async function runActualGeminiAISynthesis(prompt, apiKey, consoleLog) {
             streamSynthesizedCode(prompt);
         }, 1500);
     }
+}
+
+// ==========================================================================
+// TESTBENCH LAB GLOBAL HELPERS & SIMULATION ENGINE
+// ==========================================================================
+let tbReport = null;
+let tbSimInterval = null;
+
+function toggleTbTab(tab) {
+    document.querySelectorAll('.tb-tab-btn').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tb-tab-content').forEach(c => c.classList.remove('active'));
+    
+    if (tab === 'generator') {
+        document.getElementById('tb-tab-generator').classList.add('active');
+        document.getElementById('tb-content-generator').classList.add('active');
+    } else if (tab === 'diagnostics') {
+        document.getElementById('tb-tab-diagnostics').classList.add('active');
+        document.getElementById('tb-content-diagnostics').classList.add('active');
+    }
+}
+
+function updateTbLineNumbers() {
+    const tbInput = document.getElementById('testbench-input');
+    const lineNums = document.getElementById('tb-line-numbers');
+    if (!tbInput || !lineNums) return;
+    const linesCount = tbInput.value.split('\n').length;
+    
+    let html = "";
+    for (let i = 1; i <= linesCount; i++) {
+        html += `<div>${i}</div>`;
+    }
+    lineNums.innerHTML = html;
+}
+
+function runTbCompilation() {
+    const tbInput = document.getElementById('testbench-input');
+    if (!tbInput) return;
+    const tbCode = tbInput.value;
+    const mainModuleName = parser.moduleName || "uut";
+    
+    tbReport = parser.analyzeTestbench(tbCode, mainModuleName, currentLanguage);
+    
+    const badge = document.getElementById('tb-status-badge');
+    const container = document.getElementById('tb-diagnostic-list-container');
+    if (!container) return;
+    container.innerHTML = "";
+    
+    if (tbReport.hasErrors) {
+        if (badge) badge.innerHTML = `<span class="led red"></span> TB LINT FAILED`;
+        
+        tbReport.errors.forEach(e => {
+            const item = document.createElement('div');
+            item.className = `diag-item ${e.severity}`;
+            item.innerHTML = `
+                <div class="diag-meta">
+                    <span class="severity">${e.severity.toUpperCase()}</span>
+                    <span class="line">LINE ${e.line}</span>
+                </div>
+                <div class="diag-msg">${escapeHtml(e.message)}</div>
+                <div class="diag-suggest"><i data-lucide="info" style="height:12px; width:12px; display:inline-block; vertical-align:middle; margin-right:4px;"></i> Suggestion: ${e.suggestion}</div>
+            `;
+            container.appendChild(item);
+        });
+        lucide.createIcons();
+    } else {
+        if (badge) badge.innerHTML = `<span class="led green"></span> TB COMPILED`;
+        
+        if (tbReport.errors.length > 0) {
+            tbReport.errors.forEach(e => {
+                const item = document.createElement('div');
+                item.className = `diag-item ${e.severity}`;
+                item.innerHTML = `
+                    <div class="diag-meta">
+                        <span class="severity">${e.severity.toUpperCase()}</span>
+                    </div>
+                    <div class="diag-msg">${escapeHtml(e.message)}</div>
+                    <div class="diag-suggest">Suggestion: ${e.suggestion}</div>
+                `;
+                container.appendChild(item);
+            });
+            lucide.createIcons();
+        } else {
+            container.innerHTML = `
+                <div class="diagnostic-empty">
+                    <i data-lucide="check-circle" class="glow-green-icon"></i>
+                    <h3>TESTBENCH INTEGRITY STABLE</h3>
+                    <p>Syntax checks passed. Simulation stimulus is loaded and ready.</p>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+    }
+    
+    setupTbProposedPatch(tbCode, tbReport.correctedCode);
+}
+
+function setupTbProposedPatch(originalCode, correctedCode) {
+    const diffBody = document.getElementById('tb-diff-view-area');
+    const patchBtn = document.getElementById('tb-apply-patch-btn');
+    const container = document.getElementById('tb-diff-container');
+    if (!diffBody || !patchBtn || !container) return;
+
+    if (originalCode === correctedCode) {
+        container.style.display = "none";
+        patchBtn.disabled = true;
+        return;
+    }
+
+    container.style.display = "block";
+    const origLines = originalCode.split('\n');
+    const corrLines = correctedCode.split('\n');
+    let diffHtml = "";
+
+    const maxLines = Math.max(origLines.length, corrLines.length);
+    for (let i = 0; i < maxLines; i++) {
+        const origL = origLines[i] !== undefined ? origLines[i] : "";
+        const corrL = corrLines[i] !== undefined ? corrLines[i] : "";
+
+        if (origL !== corrL) {
+            if (origL !== "") {
+                diffHtml += `<div class="diff-line removed">- L${i+1}: ${escapeHtml(origL)}</div>`;
+            }
+            if (corrL !== "") {
+                diffHtml += `<div class="diff-line added">+ L${i+1}: ${escapeHtml(corrL)}</div>`;
+            }
+        } else {
+            diffHtml += `<div class="diff-line">  L${i+1}: ${escapeHtml(origL)}</div>`;
+        }
+    }
+
+    diffBody.innerHTML = diffHtml;
+    patchBtn.disabled = false;
+}
+
+function applyTbDiagnosticsPatch() {
+    const tbInput = document.getElementById('testbench-input');
+    if (!tbInput || !tbReport) return;
+    tbInput.value = tbReport.correctedCode;
+    updateTbLineNumbers();
+    runTbCompilation();
+}
+
+function triggerTestbenchSynthesis() {
+    const promptField = document.getElementById('tb-synth-prompt');
+    if (!promptField) return;
+    const prompt = promptField.value.trim();
+    if (prompt === "") {
+        alert("Please describe the testbench stimulus specifications.");
+        return;
+    }
+
+    const consoleLog = document.getElementById('tb-terminal-log');
+    if (!consoleLog) return;
+    consoleLog.innerHTML = "";
+
+    const logLines = [
+        `[i] CORE STIMULUS SYNTHESIZER ONLINE...`,
+        `[i] FETCHING MAIN MODULE INTERFACE PORTS...`,
+        `[i] CONSTRUCTING WAVEFORM DRIVER TIMELINES...`,
+        `[i] GENERATING EXHAUSTIVE SIGNAL PATTERNS...`,
+        `[o] TESTBENCH GENERATION SUCCEEDED.`
+    ];
+
+    let lineIndex = 0;
+    const interval = setInterval(() => {
+        if (lineIndex < logLines.length) {
+            const l = document.createElement('div');
+            l.className = 'term-line glow-green';
+            l.innerText = logLines[lineIndex++];
+            consoleLog.appendChild(l);
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        } else {
+            clearInterval(interval);
+            streamSynthesizedTestbench(prompt);
+        }
+    }, 250);
+}
+
+function streamSynthesizedTestbench(prompt) {
+    let generatedTb = "";
+    const moduleName = parser.moduleName || "uut";
+    
+    if (currentLanguage === 'vhdl') {
+        generatedTb = `-- Synthesized VHDL Testbench
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+
+entity tb_main is
+end tb_main;
+
+architecture test of tb_main is
+    component ${moduleName} is
+        Port (
+`;
+        parser.ports.forEach((p, idx) => {
+            const endChar = idx === parser.ports.length - 1 ? "" : ";";
+            if (p.width.high > 0) {
+                generatedTb += `            ${p.name} : ${p.type === 'input' ? 'in' : 'out'} STD_LOGIC_VECTOR(${p.width.high} downto ${p.width.low})${endChar}\n`;
+            } else {
+                generatedTb += `            ${p.name} : ${p.type === 'input' ? 'in' : 'out'} STD_LOGIC${endChar}\n`;
+            }
+        });
+
+        generatedTb += `        );
+    end component;
+
+`;
+        parser.ports.forEach(p => {
+            if (p.width.high > 0) {
+                generatedTb += `    signal tb_${p.name} : STD_LOGIC_VECTOR(${p.width.high} downto ${p.width.low}) := (others => '0');\n`;
+            } else {
+                generatedTb += `    signal tb_${p.name} : STD_LOGIC := '0';\n`;
+            }
+        });
+
+        generatedTb += `
+begin
+    uut_inst : ${moduleName}
+        port map (
+`;
+        parser.ports.forEach((p, idx) => {
+            const endChar = idx === parser.ports.length - 1 ? "" : ",";
+            generatedTb += `            ${p.name} => tb_${p.name}${endChar}\n`;
+        });
+
+        generatedTb += `        );
+
+    stim_proc: process
+    begin
+        wait for 10 ns;
+`;
+        const inputs = parser.ports.filter(p => p.type === 'input');
+        if (inputs.length > 0) {
+            inputs.forEach(i => {
+                generatedTb += `        tb_${i.name} <= '1';\n`;
+            });
+            generatedTb += `        wait for 20 ns;\n`;
+            inputs.forEach(i => {
+                generatedTb += `        tb_${i.name} <= '0';\n`;
+            });
+            generatedTb += `        wait for 20 ns;\n`;
+        }
+
+        generatedTb += `        wait;
+    end process;
+end test;`;
+
+    } else {
+        generatedTb = `// Synthesized Verilog Testbench
+module tb_main;
+`;
+        parser.ports.forEach(p => {
+            if (p.type === 'input') {
+                if (p.width.high > 0) {
+                    generatedTb += `    reg [${p.width.high}:${p.width.low}] ${p.name};\n`;
+                } else {
+                    generatedTb += `    reg ${p.name};\n`;
+                }
+            } else {
+                if (p.width.high > 0) {
+                    generatedTb += `    wire [${p.width.high}:${p.width.low}] ${p.name};\n`;
+                } else {
+                    generatedTb += `    wire ${p.name};\n`;
+                }
+            }
+        });
+
+        generatedTb += `
+    // Instantiate Unit Under Test
+    ${moduleName} uut (
+`;
+        parser.ports.forEach((p, idx) => {
+            const endChar = idx === parser.ports.length - 1 ? "" : ",";
+            generatedTb += `        .${p.name}(${p.name})${endChar}\n`;
+        });
+
+        generatedTb += `    );
+
+    initial begin
+`;
+        const inputs = parser.ports.filter(p => p.type === 'input');
+        inputs.forEach(i => {
+            generatedTb += `        ${i.name} = 0;\n`;
+        });
+        generatedTb += `        #10;\n`;
+
+        if (inputs.length > 0) {
+            generatedTb += `        // Test Vector 1\n`;
+            inputs.forEach(i => {
+                generatedTb += `        ${i.name} = 1;\n`;
+            });
+            generatedTb += `        #20;\n`;
+
+            generatedTb += `        // Test Vector 2\n`;
+            inputs.forEach(i => {
+                generatedTb += `        ${i.name} = 0;\n`;
+            });
+            generatedTb += `        #20;\n`;
+        }
+
+        generatedTb += `        $finish;
+    end
+endmodule`;
+    }
+
+    const boxContainer = document.getElementById('tb-result-box');
+    const codeBox = document.getElementById('tb-synthesized-code-box');
+    if (!boxContainer || !codeBox) return;
+
+    boxContainer.style.display = "flex";
+    codeBox.innerText = "";
+
+    let i = 0;
+    const timer = setInterval(() => {
+        if (i < generatedTb.length) {
+            codeBox.innerText += generatedTb.charAt(i++);
+            boxContainer.scrollTop = boxContainer.scrollHeight;
+        } else {
+            clearInterval(timer);
+        }
+    }, 3);
+}
+
+function injectSynthesizedTestbench() {
+    const codeBox = document.getElementById('tb-synthesized-code-box');
+    const tbArea = document.getElementById('testbench-input');
+    if (!codeBox || !tbArea) return;
+    
+    tbArea.value = codeBox.innerText;
+    updateTbLineNumbers();
+    
+    const resBox = document.getElementById('tb-result-box');
+    if (resBox) resBox.style.display = "none";
+    
+    const termLog = document.getElementById('tb-terminal-log');
+    if (termLog) termLog.innerHTML = `<div class="term-line opacity-50">Awaiting testbench prompt...</div>`;
+    
+    runTbCompilation();
+}
+
+function applyNextTestbenchVector() {
+    if (!tbReport) {
+        runTbCompilation();
+    }
+    if (!tbReport || tbReport.stimulus.length === 0) {
+        return false;
+    }
+    
+    if (clockCycle === 1 || activeTestbenchQueue.length === 0) {
+        activeTestbenchQueue = [...tbReport.stimulus];
+    }
+    
+    if (activeTestbenchQueue.length > 0) {
+        const nextVector = activeTestbenchQueue.shift();
+        const inputPorts = parser.ports.filter(p => p.type === 'input').map(p => p.name);
+        
+        Object.keys(nextVector.inputs).forEach(name => {
+            const matchedPort = inputPorts.find(p => p.toLowerCase() === name.toLowerCase() || p.toLowerCase() === name.replace('tb_', '').toLowerCase());
+            if (matchedPort) {
+                simState[matchedPort] = nextVector.inputs[name];
+                
+                const btn = document.querySelector(`.stim-pin[data-pin="${matchedPort}"]`);
+                if (btn) {
+                    const width = parser.ports.find(p => p.name === matchedPort).width;
+                    const bitWidth = width.high - width.low + 1;
+                    if (bitWidth > 1) {
+                        const inputField = btn.querySelector('input');
+                        if (inputField) inputField.value = nextVector.inputs[name];
+                    } else {
+                        if (nextVector.inputs[name] === 1) {
+                            btn.classList.add('active');
+                            const pinVal = btn.querySelector('.pin-val');
+                            if (pinVal) pinVal.innerText = '1';
+                        } else {
+                            btn.classList.remove('active');
+                            const pinVal = btn.querySelector('.pin-val');
+                            if (pinVal) pinVal.innerText = '0';
+                        }
+                    }
+                }
+            }
+        });
+        return true;
+    }
+    return false;
+}
+
+function runTestbenchSimulation() {
+    const tbInput = document.getElementById('testbench-input');
+    const tbCode = tbInput ? tbInput.value.trim() : "";
+
+    const sourceSelect = document.getElementById('stimulus-source-select');
+    const overlay = document.getElementById('stimulus-overlay-cover');
+
+    if (!tbCode) {
+        // Fallback: Testbench is empty -> manual inputs mode
+        if (sourceSelect) sourceSelect.value = 'manual';
+        if (overlay) overlay.style.display = 'none';
+        
+        resetSimulationEngine();
+        
+        // Log manual fallback trace message
+        if (simLogElement) {
+            const line = document.createElement('div');
+            line.className = 'term-line glow-green';
+            line.innerText = `[i] TESTBENCH NOT PROVIDED. ENTERED MANUAL BOARD MODE.`;
+            simLogElement.appendChild(line);
+        }
+
+        switchWindow('window-simulator');
+        return;
+    }
+
+    // Testbench code is present -> compile and run it
+    runTbCompilation();
+    
+    if (tbReport && tbReport.hasErrors) {
+        alert("Your testbench compiled with errors. Please resolve syntax defects or clear the editor to run in Manual Board mode.");
+        return;
+    }
+
+    if (sourceSelect) sourceSelect.value = 'testbench';
+    if (overlay) overlay.style.display = 'flex';
+
+    resetSimulationEngine();
+    
+    if (tbReport && tbReport.stimulus && tbReport.stimulus.length > 0) {
+        activeTestbenchQueue = [...tbReport.stimulus];
+    }
+
+    switchWindow('window-simulator');
+    toggleSimulationRun();
 }
