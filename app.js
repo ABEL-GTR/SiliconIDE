@@ -716,8 +716,10 @@ function runHDLCompilation() {
     const detectedLang = detectLanguage(code);
     if (detectedLang && detectedLang !== currentLanguage) {
         currentLanguage = detectedLang;
-        document.getElementById('current-filename').innerText = currentLanguage === 'vhdl' ? 'main.vhd' : 'main.v';
-        document.getElementById('current-hdl-label').innerText = currentLanguage.toUpperCase();
+        const filenameEl = document.getElementById('current-filename');
+        if (filenameEl) filenameEl.innerText = currentLanguage === 'vhdl' ? 'main.vhd' : 'main.v';
+        const labelEl = document.getElementById('current-hdl-label');
+        if (labelEl) labelEl.innerText = currentLanguage.toUpperCase();
         
         // Update active selector card class on the home screen
         const cards = document.querySelectorAll('.selector-card');
@@ -785,14 +787,20 @@ function toggleDiagTab(tab) {
     document.querySelectorAll('.hdl-tab-content').forEach(c => c.classList.remove('active'));
     
     if (tab === 'errors') {
-        document.getElementById('tab-errors').classList.add('active');
-        document.getElementById('content-errors').classList.add('active');
+        const tabEl = document.getElementById('tab-errors');
+        const contentEl = document.getElementById('content-errors');
+        if (tabEl) tabEl.classList.add('active');
+        if (contentEl) contentEl.classList.add('active');
     } else if (tab === 'autocorrect') {
-        document.getElementById('tab-autocorrect').classList.add('active');
-        document.getElementById('content-autocorrect').classList.add('active');
+        const tabEl = document.getElementById('tab-autocorrect');
+        const contentEl = document.getElementById('content-autocorrect');
+        if (tabEl) tabEl.classList.add('active');
+        if (contentEl) contentEl.classList.add('active');
     } else if (tab === 'generator') {
-        document.getElementById('tab-generator').classList.add('active');
-        document.getElementById('content-generator').classList.add('active');
+        const tabEl = document.getElementById('tab-generator');
+        const contentEl = document.getElementById('content-generator');
+        if (tabEl) tabEl.classList.add('active');
+        if (contentEl) contentEl.classList.add('active');
     }
 }
 
@@ -1080,13 +1088,13 @@ endmodule`;
     const codeBox = document.getElementById('synthesized-code-box');
 
     boxContainer.style.display = "flex";
-    codeBox.innerText = "";
+    codeBox.textContent = "";
 
     // Typewriter effect streaming
     let i = 0;
     const timer = setInterval(() => {
         if (i < generatedVerilog.length) {
-            codeBox.innerText += generatedVerilog.charAt(i++);
+            codeBox.textContent += generatedVerilog.charAt(i++);
             boxContainer.scrollTop = boxContainer.scrollHeight;
         } else {
             clearInterval(timer);
@@ -1098,7 +1106,7 @@ function injectSynthesizedCode() {
     const codeBox = document.getElementById('synthesized-code-box');
     const codeArea = document.getElementById('code-input');
     
-    codeArea.value = codeBox.innerText;
+    codeArea.value = codeBox.textContent;
     updateLineNumbers();
     
     // Hide box
@@ -1750,13 +1758,13 @@ async function runActualGeminiAISynthesis(prompt, apiKey, consoleLog) {
         const codeBox = document.getElementById('synthesized-code-box');
 
         if (boxContainer) boxContainer.style.display = "flex";
-        if (codeBox) codeBox.innerText = "";
+        if (codeBox) codeBox.textContent = "";
 
         // Stream typewriter
         let i = 0;
         const timer = setInterval(() => {
             if (i < rawCode.length) {
-                if (codeBox) codeBox.innerText += rawCode.charAt(i++);
+                if (codeBox) codeBox.textContent += rawCode.charAt(i++);
                 if (boxContainer) boxContainer.scrollTop = boxContainer.scrollHeight;
             } else {
                 clearInterval(timer);
@@ -2091,12 +2099,12 @@ endmodule`;
     if (!boxContainer || !codeBox) return;
 
     boxContainer.style.display = "flex";
-    codeBox.innerText = "";
+    codeBox.textContent = "";
 
     let i = 0;
     const timer = setInterval(() => {
         if (i < generatedTb.length) {
-            codeBox.innerText += generatedTb.charAt(i++);
+            codeBox.textContent += generatedTb.charAt(i++);
             boxContainer.scrollTop = boxContainer.scrollHeight;
         } else {
             clearInterval(timer);
@@ -2104,12 +2112,13 @@ endmodule`;
     }, 3);
 }
 
+// Target: inject tb textContent
 function injectSynthesizedTestbench() {
     const codeBox = document.getElementById('tb-synthesized-code-box');
     const tbArea = document.getElementById('testbench-input');
     if (!codeBox || !tbArea) return;
     
-    tbArea.value = codeBox.innerText;
+    tbArea.value = codeBox.textContent;
     updateTbLineNumbers();
     
     const resBox = document.getElementById('tb-result-box');
